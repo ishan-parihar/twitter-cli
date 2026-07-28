@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from twitter_cli.timeutil import format_iso8601, format_local_time, format_relative_time
 
-
 SAMPLE_TIMESTAMP = "Sat Mar 08 12:00:00 +0000 2026"
 
 

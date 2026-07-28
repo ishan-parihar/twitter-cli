@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 _TWITTER_TIME_FORMAT = "%a %b %d %H:%M:%S %z %Y"
 
 
-def _parse_twitter_time(created_at: str) -> Optional[datetime]:
+def _parse_twitter_time(created_at: str) -> datetime | None:
     """Parse a Twitter API timestamp into a timezone-aware datetime."""
     if not created_at:
         return None

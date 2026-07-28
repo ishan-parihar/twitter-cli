@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import time
 
-from click.testing import CliRunner
 import pytest
-from rich.console import Console
 import yaml
+from click.testing import CliRunner
+from rich.console import Console
 
 from twitter_cli.cli import cli
 from twitter_cli.formatter import article_to_markdown, print_tweet_table
@@ -280,7 +280,7 @@ def test_cli_article_markdown_output_and_save(monkeypatch, tmp_path) -> None:
             return article
 
     monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
-    monkeypatch.setattr("twitter_cli.cli.load_config", lambda: {})
+    monkeypatch.setattr("twitter_cli.cli.load_config", dict)
     output_path = tmp_path / "article.md"
     runner = CliRunner()
 
@@ -312,7 +312,7 @@ def test_cli_article_markdown_overrides_auto_structured_output(monkeypatch) -> N
 
     monkeypatch.setenv("OUTPUT", "auto")
     monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
-    monkeypatch.setattr("twitter_cli.cli.load_config", lambda: {})
+    monkeypatch.setattr("twitter_cli.cli.load_config", dict)
     runner = CliRunner()
 
     result = runner.invoke(cli, ["article", "12345", "--markdown"])
@@ -338,7 +338,7 @@ def test_cli_article_json_output_file_uses_structured_format(monkeypatch, tmp_pa
             return article
 
     monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
-    monkeypatch.setattr("twitter_cli.cli.load_config", lambda: {})
+    monkeypatch.setattr("twitter_cli.cli.load_config", dict)
     output_path = tmp_path / "article.json"
     runner = CliRunner()
 
@@ -447,7 +447,7 @@ def test_cli_bookmarks_folders_list_writes_output_file(monkeypatch, tmp_path) ->
             return [BookmarkFolder(id="f1", name="Reading"), BookmarkFolder(id="f2", name="Research")]
 
     monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
-    monkeypatch.setattr("twitter_cli.cli.load_config", lambda: {})
+    monkeypatch.setattr("twitter_cli.cli.load_config", dict)
     output_path = tmp_path / "folders.json"
     runner = CliRunner()
 
@@ -794,7 +794,7 @@ def test_show_happy_path(monkeypatch, tmp_path, tweet_factory):
             return [tw]
 
     monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
-    monkeypatch.setattr("twitter_cli.cli.load_config", lambda: {})
+    monkeypatch.setattr("twitter_cli.cli.load_config", dict)
 
     runner = CliRunner()
     result = runner.invoke(cli, ["show", "2"])

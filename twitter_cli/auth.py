@@ -16,7 +16,7 @@ import logging
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .constants import BEARER_TOKEN, get_user_agent
 from .exceptions import AuthenticationError
@@ -43,7 +43,7 @@ _KEYCHAIN_ERROR_KEYWORDS = (
 )
 
 
-def _diagnose_keychain_issues(diagnostics: List[str]) -> Optional[str]:
+def _diagnose_keychain_issues(diagnostics: list[str]) -> str | None:
     """Analyse extraction diagnostics for Keychain permission issues.
 
     Returns a user-friendly hint string, or None.
@@ -82,7 +82,7 @@ def _diagnose_keychain_issues(diagnostics: List[str]) -> Optional[str]:
     )
 
 
-def load_from_env() -> Optional[Dict[str, str]]:
+def load_from_env() -> dict[str, str] | None:
     """Load cookies from environment variables."""
     auth_token = os.environ.get("TWITTER_AUTH_TOKEN", "")
     ct0 = os.environ.get("TWITTER_CT0", "")
@@ -97,7 +97,7 @@ def load_from_env() -> Optional[Dict[str, str]]:
     return None
 
 
-def verify_cookies(auth_token: str, ct0: str, cookie_string: Optional[str] = None) -> Dict[str, Any]:
+def verify_cookies(auth_token: str, ct0: str, cookie_string: str | None = None) -> dict[str, Any]:
     """Verify cookies by calling a Twitter API endpoint.
 
     Uses curl_cffi for proper TLS fingerprint.
@@ -163,10 +163,10 @@ def verify_cookies(auth_token: str, ct0: str, cookie_string: Optional[str] = Non
     return {}
 
 
-def _extract_cookies_from_jar(jar: Any, source: str = "unknown") -> Optional[Dict[str, str]]:
+def _extract_cookies_from_jar(jar: Any, source: str = "unknown") -> dict[str, str] | None:
     """Extract Twitter cookies from a cookie jar."""
-    result: Dict[str, str] = {}
-    all_cookies: Dict[str, str] = {}
+    result: dict[str, str] = {}
+    all_cookies: dict[str, str] = {}
     twitter_cookie_count = 0
     for cookie in jar:
         domain = cookie.domain or ""
@@ -196,7 +196,7 @@ def _extract_cookies_from_jar(jar: Any, source: str = "unknown") -> Optional[Dic
 
 # Base directories for Chromium-based browsers, keyed by browser name.
 # Each entry maps to the directory under the platform-specific app data root.
-_CHROMIUM_BASE_DIRS: Dict[str, str] = {
+_CHROMIUM_BASE_DIRS: dict[str, str] = {
     "chrome": os.path.join("Google", "Chrome"),
     "arc": os.path.join("Arc", "User Data"),
     "edge": "Microsoft Edge",
@@ -207,7 +207,7 @@ _CHROMIUM_BASE_DIRS: Dict[str, str] = {
 _DEFAULT_BROWSER_ORDER = ["arc", "chrome", "edge", "firefox", "brave"]
 
 
-def _get_browser_order() -> List[str]:
+def _get_browser_order() -> list[str]:
     """Return browser extraction order, respecting TWITTER_BROWSER env var."""
     env = os.environ.get("TWITTER_BROWSER", "").strip().lower()
     if not env:
@@ -218,7 +218,7 @@ def _get_browser_order() -> List[str]:
     return [env] + [b for b in _DEFAULT_BROWSER_ORDER if b != env]
 
 
-def _iter_chrome_cookie_files(browser_name: str) -> List[str]:
+def _iter_chrome_cookie_files(browser_name: str) -> list[str]:
     """Return cookie file paths for all Chrome profiles.
 
     If TWITTER_CHROME_PROFILE is set, only that profile is returned.
@@ -255,7 +255,7 @@ def _iter_chrome_cookie_files(browser_name: str) -> List[str]:
         return []
 
     # Auto-discover: Default first, then Profile N sorted
-    paths: List[str] = []
+    paths: list[str] = []
     default_cookies = os.path.join(root, "Default", "Cookies")
     if os.path.exists(default_cookies):
         paths.append(default_cookies)
@@ -269,7 +269,7 @@ def _iter_chrome_cookie_files(browser_name: str) -> List[str]:
     return paths
 
 
-def _extract_in_process() -> Tuple[Optional[Dict[str, str]], List[str]]:
+def _extract_in_process() -> tuple[dict[str, str] | None, list[str]]:
     """Extract cookies in the main process (required on macOS for Keychain access).
 
     On macOS, Chrome encrypts cookies using a key stored in the system Keychain.
@@ -293,8 +293,8 @@ def _extract_in_process() -> Tuple[Optional[Dict[str, str]], List[str]]:
         "firefox": browser_cookie3.firefox,
         "brave": browser_cookie3.brave,
     }
-    attempts: List[str] = []
-    diagnostics: List[str] = []
+    attempts: list[str] = []
+    diagnostics: list[str] = []
 
     for name in _get_browser_order():
         fn = browser_fns[name]
@@ -351,7 +351,7 @@ def _extract_in_process() -> Tuple[Optional[Dict[str, str]], List[str]]:
     return None, diagnostics
 
 
-def _extract_via_subprocess() -> Tuple[Optional[Dict[str, str]], List[str]]:
+def _extract_via_subprocess() -> tuple[dict[str, str] | None, list[str]]:
     """Extract cookies via subprocess (fallback if in-process fails, e.g. SQLite lock).
 
     Returns (cookies_dict | None, diagnostics_list).
@@ -485,13 +485,13 @@ print(json.dumps({
 sys.exit(1)
 '''
 
-    diagnostics: List[str] = []
+    diagnostics: list[str] = []
 
     def _run_extract_command(
         cmd: list[str],
         timeout: int,
         label: str,
-    ) -> Tuple[Optional[Dict[str, Any]], bool]:
+    ) -> tuple[dict[str, Any] | None, bool]:
         try:
             result = subprocess.run(
                 cmd,
@@ -548,7 +548,7 @@ sys.exit(1)
         logger.info("Found cookies in %s (subprocess)", data.get("browser", "unknown"))
 
         # Build full cookie string from all extracted cookies
-        cookies: Dict[str, str] = {"auth_token": data["auth_token"], "ct0": data["ct0"]}
+        cookies: dict[str, str] = {"auth_token": data["auth_token"], "ct0": data["ct0"]}
         all_cookies = data.get("all_cookies", {})
         if all_cookies:
             cookie_str = "; ".join("%s=%s" % (k, v) for k, v in all_cookies.items())
@@ -560,7 +560,7 @@ sys.exit(1)
         return None, diagnostics
 
 
-def extract_from_browser() -> Tuple[Optional[Dict[str, str]], List[str]]:
+def extract_from_browser() -> tuple[dict[str, str] | None, list[str]]:
     """Auto-extract ALL Twitter cookies from local browser using browser-cookie3.
 
     Strategy:
@@ -569,7 +569,7 @@ def extract_from_browser() -> Tuple[Optional[Dict[str, str]], List[str]]:
 
     Returns (cookies_dict | None, diagnostics_list).
     """
-    all_diagnostics: List[str] = []
+    all_diagnostics: list[str] = []
 
     # 1. In-process (works on macOS, may fail with SQLite lock)
     cookies, diag = _extract_in_process()
@@ -586,13 +586,13 @@ def extract_from_browser() -> Tuple[Optional[Dict[str, str]], List[str]]:
     return cookies, all_diagnostics
 
 
-def get_cookies() -> Dict[str, str]:
+def get_cookies() -> dict[str, str]:
     """Get Twitter cookies. Priority: env vars -> browser extraction.
 
     Raises RuntimeError if no cookies found.
     """
-    cookies: Optional[Dict[str, str]] = None
-    diagnostics: List[str] = []
+    cookies: dict[str, str] | None = None
+    diagnostics: list[str] = []
 
     # 1. Try environment variables
     cookies = load_from_env()
@@ -634,7 +634,7 @@ def get_cookies() -> Dict[str, str]:
     return cookies
 
 
-def auth_status() -> Dict[str, Any]:
+def auth_status() -> dict[str, Any]:
     """Check authentication status by verifying cookies."""
     try:
         cookies = get_cookies()

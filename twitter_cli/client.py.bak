@@ -11,14 +11,12 @@ import os
 import random
 import time
 import urllib.parse
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 import bs4
 from curl_cffi import requests as _cffi_requests
 from x_client_transaction import ClientTransaction
-from x_client_transaction.utils import generate_headers as _gen_ct_headers
-from x_client_transaction.utils import get_ondemand_file_url
+from x_client_transaction.utils import generate_headers as _gen_ct_headers, get_ondemand_file_url
 
 from .constants import (
     BEARER_TOKEN,
@@ -26,8 +24,8 @@ from .constants import (
     SEC_CH_UA_MOBILE,
     SEC_CH_UA_MODEL,
     get_accept_language,
-    get_sec_ch_ua,
     get_sec_ch_ua_arch,
+    get_sec_ch_ua,
     get_sec_ch_ua_full_version,
     get_sec_ch_ua_full_version_list,
     get_sec_ch_ua_platform,
@@ -66,7 +64,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Shared curl_cffi session (single-threaded CLI)
-_cffi_session = None  # type: Optional[Any]
+_cffi_session = None
 
 TimelineInstructionGetter = Callable[[Any], Any]
 
@@ -943,9 +941,9 @@ class TwitterClient:
     def get_dm_conversations(self, count=50):
         # type: (int) -> List[Dict[str, Any]]
         """Fetch DM conversations for the authenticated user."""
-        variables = {"count": min(count, 100)}  # type: Dict[str, Any]
+        variables = {"count": min(count, 100)}
         data = self._graphql_get("GetDMConversations", variables, FEATURES)
-        return _deep_get(data, "data", "dm_conversations", "conversations") or []
+        return _deep_get(data, "data", "dm_conversations", "conversations", default=[])
 
     def get_dm_messages(self, conversation_id, count=50, cursor=None):
         # type: (str, int, Optional[str]) -> List[Dict[str, Any]]
@@ -954,9 +952,9 @@ class TwitterClient:
         if cursor:
             variables["cursor"] = cursor
         data = self._graphql_get("GetDMMessages", variables, FEATURES)
-        messages = _deep_get(data, "data", "dm_conversation_messages", "messages") or []
+        messages = _deep_get(data, "data", "dm_conversation_messages", "messages", default=[])
         next_cursor = _deep_get(data, "data", "dm_conversation_messages", "next_cursor")
-        return messages, next_cursor  # type: ignore[return-value]
+        return messages, next_cursor
 
     # ── Block / Unblock ──────────────────────────────────────────────
 
@@ -1070,7 +1068,7 @@ class TwitterClient:
 
         Only provided fields are updated.
         """
-        variables = {"list_id": list_id}  # type: Dict[str, Any]
+        variables = {"list_id": list_id}
         if name is not None:
             variables["name"] = name
         if description is not None:
@@ -1102,7 +1100,7 @@ class TwitterClient:
         self._write_delay()
         return True
 
-    def fetch_list_members(self, list_id, count=100):
+    def get_list_members(self, list_id, count=100):
         # type: (str, int) -> List[UserProfile]
         """Fetch members of a Twitter List."""
         return self._fetch_user_list(
@@ -1111,43 +1109,49 @@ class TwitterClient:
             use_post=True,
         )
 
-    def fetch_list_subscriptions(self, user_id, count=100):
+    def get_list_subscriptions(self, user_id, count=100):
         # type: (str, int) -> List[Dict[str, Any]]
         """Fetch lists a user subscribes to (follows)."""
         variables = {"userId": user_id, "count": min(count, 100)}
         data = self._graphql_get("GetListSubscriptions", variables, FEATURES)
-        return _deep_get(data, "data", "user", "result", "list_subscriptions", "items") or []
+        return _deep_get(data, "data", "user", "result", "list_subscriptions", "items", default=[])
 
     # ── Notifications ────────────────────────────────────────────────
 
-    def fetch_notifications(self, count=20, filter_type=None):
+    def get_notifications(self, count=50, cursor=None):
         # type: (int, Optional[str]) -> List[Dict[str, Any]]
-        """Fetch notifications for the authenticated user.
-
-        Args:
-            count: Max notifications to fetch.
-            filter_type: Optional filter - 'mentions', 'likes', 'retweets', 'follows', 'all'.
-        Returns:
-            List of notification objects.
-        """
-        variables = {"count": min(count, 100)}  # type: Dict[str, Any]
-        if filter_type:
-            variables["filter"] = filter_type
+        """Fetch notifications for the authenticated user."""
+        variables = {"count": min(count, 100)}
+        if cursor:
+            variables["cursor"] = cursor
         data = self._graphql_get("GetNotifications", variables, FEATURES)
-        notifications = _deep_get(data, "data", "notifications", "timeline", "instructions")
-        return notifications or []
+        notifications = _deep_get(data, "data", "notifications", "timeline", "instructions", default=[])
+        # Parse notification entries
+        results = []
+        for instr in notifications:
+            for entry in instr.get("entries", []):
+                content = entry.get("content", {})
+                if content.get("entryType") == "TimelineTimelineItem":
+                    item = content.get("itemContent", {})
+                    tweet_result = _deep_get(item, "tweet_results", "result")
+                    if tweet_result:
+                        results.append(tweet_result)
+        next_cursor = _deep_get(data, "data", "notifications", "next_cursor")
+        return results, next_cursor
 
     # ── Communities ──────────────────────────────────────────────────
 
-    def fetch_community_tweets(self, community_id, count=20):
-        # type: (str, int) -> List[Tweet]
-        """Fetch tweets from a Community."""
+    def get_community_tweets(self, community_id, count=50, cursor=None):
+        # type: (str, int, Optional[str]) -> List[Tweet]
+        """Fetch tweets from a Twitter Community."""
         return self._fetch_timeline(
             "GetCommunityTweets",
             count,
-            lambda data: _deep_get(data, "data", "community", "tweets_timeline", "timeline", "instructions"),
-            extra_variables={"communityId": community_id},
+            lambda data: _deep_get(data, "data", "community_tweets_timeline", "timeline", "instructions"),
+            extra_variables={"community_id": community_id},
             override_base_variables=True,
+            start_cursor=cursor,
+            return_cursor=True,
         )
 
     def join_community(self, community_id):
@@ -1164,7 +1168,50 @@ class TwitterClient:
         self._write_delay()
         return True
 
-    # ── Direct Messages (DMs) ────────────────────────────────────────
+    # ── Direct Messages ──────────────────────────────────────────────
+
+    def create_dm_conversation(self, participant_ids):
+        # type: (List[str]) -> str
+        """Create a new DM conversation with participants.
+
+        Args:
+            participant_ids: List of user IDs to include in the conversation.
+        Returns:
+            Conversation ID.
+        """
+        variables = {"participant_ids": participant_ids}
+        data = self._graphql_post("CreateDMConversation", variables)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_dm_conversation", "conversation_id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to create DM conversation")
+
+    def send_dm(self, conversation_id, text, media_ids=None):
+        # type: (str, str, Optional[List[str]]) -> str
+        """Send a direct message in a conversation.
+
+        Args:
+            conversation_id: The conversation ID.
+            text: Message text.
+            media_ids: Optional list of media IDs to attach.
+        Returns:
+            Message ID.
+        """
+        media_entities = []
+        if media_ids:
+            media_entities = [{"media_id": mid, "tagged_users": []} for mid in media_ids]
+        variables = {
+            "conversation_id": conversation_id,
+            "text": text,
+            "media": {"media_entities": media_entities, "possibly_sensitive": False},
+        }
+        data = self._graphql_post("SendDM", variables)
+        self._write_delay()
+        result = _deep_get(data, "data", "send_dm", "message_id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to send DM")
 
     def fetch_dm_conversations(self, count=20):
         # type: (int) -> List[Dict[str, Any]]
@@ -1224,6 +1271,215 @@ class TwitterClient:
         self._write_delay()
         return True
 
+    # ── Block / Unblock ──────────────────────────────────────────────
+
+    def block_user(self, user_id):
+        # type: (str) -> bool
+        """Block a user by user ID. Returns True on success."""
+        variables = {"user_id": user_id}
+        self._graphql_post("BlockUser", variables)
+        self._write_delay()
+        return True
+
+    def unblock_user(self, user_id):
+        # type: (str) -> bool
+        """Unblock a user by user ID. Returns True on success."""
+        variables = {"user_id": user_id}
+        self._graphql_post("UnblockUser", variables)
+        self._write_delay()
+        return True
+
+    # ── Mute / Unmute ────────────────────────────────────────────────
+
+    def mute_user(self, user_id):
+        # type: (str) -> bool
+        """Mute a user by user ID. Returns True on success."""
+        variables = {"user_id": user_id}
+        self._graphql_post("MuteUser", variables)
+        self._write_delay()
+        return True
+
+    def unmute_user(self, user_id):
+        # type: (str) -> bool
+        """Unmute a user by user ID. Returns True on success."""
+        variables = {"user_id": user_id}
+        self._graphql_post("UnmuteUser", variables)
+        self._write_delay()
+        return True
+
+    # ── Polls ────────────────────────────────────────────────────────
+
+    def create_poll(self, text, options, duration_minutes=1440):
+        # type: (str, List[str], int) -> str
+        """Create a poll tweet.
+
+        Args:
+            text: Tweet text (the question).
+            options: List of 2-4 poll options.
+            duration_minutes: Poll duration in minutes (5-10080, default 1440 = 24h).
+        Returns:
+            Tweet ID of the created poll.
+        """
+        if len(options) < 2 or len(options) > 4:
+            raise ValueError("Poll must have 2-4 options")
+        variables = {
+            "tweet_text": text,
+            "poll": {"options": options, "duration_minutes": duration_minutes},
+            "semantic_annotation_ids": [],
+            "dark_request": False,
+        }
+        data = self._graphql_post("CreatePoll", variables, FEATURES)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_tweet", "tweet_results", "result")
+        if result:
+            return result.get("rest_id", "")
+        raise TwitterAPIError(0, "Failed to create poll")
+
+    def vote_poll(self, tweet_id, option_index):
+        # type: (str, int) -> bool
+        """Vote on a poll.
+
+        Args:
+            tweet_id: The poll tweet ID.
+            option_index: 0-based index of the option to vote for.
+        Returns:
+            True on success.
+        """
+        variables = {"tweet_id": tweet_id, "choice_number": option_index + 1}
+        self._graphql_post("VotePoll", variables)
+        self._write_delay()
+        return True
+
+    # ── Lists ────────────────────────────────────────────────────────
+
+    def create_list(self, name, description="", private=False):
+        # type: (str, str, bool) -> str
+        """Create a new Twitter List.
+
+        Args:
+            name: List name (max 25 chars).
+            description: Optional description (max 100 chars).
+            private: Whether the list is private.
+        Returns:
+            List ID.
+        """
+        variables = {
+            "name": name,
+            "description": description,
+            "private": private,
+        }
+        data = self._graphql_post("CreateList", variables)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_list", "list", "id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to create list")
+
+    def update_list(self, list_id, name=None, description=None, private=None):
+        # type: (str, Optional[str], Optional[str], Optional[bool]) -> bool
+        """Update a Twitter List."""
+        variables = {"list_id": list_id}
+        if name is not None:
+            variables["name"] = name
+        if description is not None:
+            variables["description"] = description
+        if private is not None:
+            variables["private"] = private
+        self._graphql_post("UpdateList", variables)
+        self._write_delay()
+        return True
+
+    def delete_list(self, list_id):
+        # type: (str) -> bool
+        """Delete a Twitter List."""
+        variables = {"list_id": list_id}
+        self._graphql_post("DeleteList", variables)
+        self._write_delay()
+        return True
+
+    def add_list_member(self, list_id, user_id):
+        # type: (str, str) -> bool
+        """Add a member to a Twitter List."""
+        variables = {"list_id": list_id, "user_id": user_id}
+        self._graphql_post("AddListMember", variables)
+        self._write_delay()
+        return True
+
+    def remove_list_member(self, list_id, user_id):
+        # type: (str, str) -> bool
+        """Remove a member from a Twitter List."""
+        variables = {"list_id": list_id, "user_id": user_id}
+        self._graphql_post("RemoveListMember", variables)
+        self._write_delay()
+        return True
+
+    def fetch_list_members(self, list_id, count=20):
+        # type: (str, int) -> List[UserProfile]
+        """Fetch members of a Twitter List."""
+        return self._fetch_user_list(
+            "GetListMembers", list_id, count,
+            lambda data: _deep_get(data, "data", "list", "members_timeline", "timeline", "instructions"),
+            use_post=True,
+        )
+
+    def fetch_list_subscriptions(self, user_id=None, count=20):
+        # type: (Optional[str], int) -> List[Dict[str, Any]]
+        """Fetch lists a user subscribes to (or authenticated user if user_id is None)."""
+        if user_id is None:
+            me = self.fetch_me()
+            user_id = me.id
+        variables = {"userId": user_id, "count": min(count, 100)}
+        data = self._graphql_get("GetListSubscriptions", variables, FEATURES)
+        return _deep_get(data, "data", "user", "result", "list_subscriptions", "lists") or []
+
+    # ── Notifications ────────────────────────────────────────────────
+
+    def fetch_notifications(self, count=20, filter_type=None):
+        # type: (int, Optional[str]) -> List[Dict[str, Any]]
+        """Fetch notifications for the authenticated user.
+
+        Args:
+            count: Max notifications to fetch.
+            filter_type: Optional filter - 'mentions', 'likes', 'retweets', 'follows', 'all'.
+        Returns:
+            List of notification objects.
+        """
+        variables = {"count": min(count, 100)}
+        if filter_type:
+            variables["filter"] = filter_type
+        data = self._graphql_get("GetNotifications", variables, FEATURES)
+        notifications = _deep_get(data, "data", "notifications", "timeline", "instructions")
+        return notifications or []
+
+    # ── Communities ──────────────────────────────────────────────────
+
+    def fetch_community_tweets(self, community_id, count=20):
+        # type: (str, int) -> List[Tweet]
+        """Fetch tweets from a Community."""
+        return self._fetch_timeline(
+            "GetCommunityTweets",
+            count,
+            lambda data: _deep_get(data, "data", "community", "tweets_timeline", "timeline", "instructions"),
+            extra_variables={"communityId": community_id},
+            override_base_variables=True,
+        )
+
+    def join_community(self, community_id):
+        # type: (str) -> bool
+        """Join a Community."""
+        variables = {"community_id": community_id}
+        self._graphql_post("JoinCommunity", variables)
+        self._write_delay()
+        return True
+
+    def leave_community(self, community_id):
+        # type: (str) -> bool
+        """Leave a Community."""
+        variables = {"community_id": community_id}
+        self._graphql_post("LeaveCommunity", variables)
+        self._write_delay()
+        return True
+
     # ── Internal: timeline / user list fetchers ──────────────────────
 
     def _fetch_timeline(self, operation_name, count, get_instructions, extra_variables=None, override_base_variables=False, field_toggles=None, use_post=False, include_promoted=False, start_cursor=None, return_cursor=False):
@@ -1252,7 +1508,7 @@ class TwitterClient:
 
         while len(tweets) < count and attempts < max_attempts:
             attempts += 1
-            variables: dict[str, Any]
+            variables: Dict[str, Any]
             if override_base_variables:
                 variables = {"count": min(count - len(tweets) + 5, 40)}
             else:

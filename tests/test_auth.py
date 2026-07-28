@@ -310,7 +310,7 @@ def test_extract_in_process_tries_multiple_profiles(monkeypatch, tmp_path) -> No
         arc=mock_arc,
         chrome=lambda cookie_file=None: [],
         edge=lambda cookie_file=None: [],
-        firefox=lambda: [],
+        firefox=list,
         brave=lambda cookie_file=None: [],
     )
     monkeypatch.setitem(sys.modules, "browser_cookie3", fake_module)
@@ -401,7 +401,7 @@ def test_extract_in_process_returns_diagnostics_on_failure(monkeypatch) -> None:
 
     fake_module = SimpleNamespace(
         arc=lambda: (_ for _ in ()).throw(BrowserError("Unable to get key for cookie decryption")),
-        chrome=lambda: [],
+        chrome=list,
         edge=lambda: (_ for _ in ()).throw(BrowserError("Edge not found")),
         firefox=lambda: (_ for _ in ()).throw(BrowserError("Firefox not found")),
         brave=lambda: (_ for _ in ()).throw(BrowserError("Brave not found")),

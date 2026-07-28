@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import copy
 import logging
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional
+from typing import Any
 
 import yaml
 
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_CONFIG: Dict[str, Dict[str, Any]] = {
+DEFAULT_CONFIG: dict[str, dict[str, Any]] = {
     "fetch": {
         "count": 50,
     },
@@ -39,7 +40,7 @@ DEFAULT_CONFIG: Dict[str, Dict[str, Any]] = {
 }
 
 
-def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def load_config(config_path: str | None = None) -> dict[str, Any]:
     """Load and normalize config from YAML, merged with defaults."""
     config = copy.deepcopy(DEFAULT_CONFIG)
     path = _resolve_config_path(config_path)
@@ -66,7 +67,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     return _normalize_config(merged)
 
 
-def _resolve_config_path(config_path: Optional[str]) -> Optional[Path]:
+def _resolve_config_path(config_path: str | None) -> Path | None:
     """Find config path from explicit argument or default locations."""
     if config_path:
         path = Path(config_path)
@@ -82,7 +83,7 @@ def _resolve_config_path(config_path: Optional[str]) -> Optional[Path]:
     return None
 
 
-def _deep_merge(target: Dict[str, Any], source: Mapping[str, Any]) -> Dict[str, Any]:
+def _deep_merge(target: dict[str, Any], source: Mapping[str, Any]) -> dict[str, Any]:
     """Deep merge source into target (source values override target)."""
     result = copy.deepcopy(target)
     for key, value in source.items():
@@ -93,7 +94,7 @@ def _deep_merge(target: Dict[str, Any], source: Mapping[str, Any]) -> Dict[str, 
     return result
 
 
-def _normalize_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_config(config: dict[str, Any]) -> dict[str, Any]:
     """Normalize shape and value types."""
     normalized = copy.deepcopy(DEFAULT_CONFIG)
     merged = _deep_merge(normalized, config)

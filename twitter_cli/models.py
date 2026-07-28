@@ -6,7 +6,6 @@ Defines Tweet, Author, Metrics, TweetMedia, and new models for DMs, Lists, Polls
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 
 @dataclass
@@ -32,8 +31,8 @@ class Metrics:
 class TweetMedia:
     type: str  # "photo" | "video" | "animated_gif"
     url: str
-    width: Optional[int] = None
-    height: Optional[int] = None
+    width: int | None = None
+    height: int | None = None
 
 
 @dataclass
@@ -43,15 +42,15 @@ class Tweet:
     author: Author
     metrics: Metrics
     created_at: str
-    media: List[TweetMedia] = field(default_factory=list)
-    urls: List[str] = field(default_factory=list)
+    media: list[TweetMedia] = field(default_factory=list)
+    urls: list[str] = field(default_factory=list)
     is_retweet: bool = False
     lang: str = ""
-    retweeted_by: Optional[str] = None
-    quoted_tweet: Optional[Tweet] = None
-    score: Optional[float] = None
-    article_title: Optional[str] = None
-    article_text: Optional[str] = None
+    retweeted_by: str | None = None
+    quoted_tweet: Tweet | None = None
+    score: float | None = None
+    article_title: str | None = None
+    article_text: str | None = None
     is_subscriber_only: bool = False
     is_promoted: bool = False
 
@@ -95,14 +94,14 @@ class DMMessage:
     sender_screen_name: str
     text: str
     created_at: str
-    media: List[TweetMedia] = field(default_factory=list)
+    media: list[TweetMedia] = field(default_factory=list)
 
 
 @dataclass
 class DMConversation:
     id: str
-    participants: List[DMParticipant] = field(default_factory=list)
-    last_message: Optional[DMMessage] = None
+    participants: list[DMParticipant] = field(default_factory=list)
+    last_message: DMMessage | None = None
     updated_at: str = ""
 
 
@@ -114,7 +113,7 @@ class TwitterList:
     private: bool = False
     member_count: int = 0
     subscriber_count: int = 0
-    owner: Optional[UserProfile] = None
+    owner: UserProfile | None = None
     created_at: str = ""
 
 
@@ -127,7 +126,7 @@ class PollOption:
 
 @dataclass
 class Poll:
-    options: List[PollOption] = field(default_factory=list)
+    options: list[PollOption] = field(default_factory=list)
     duration_minutes: int = 0
     end_datetime: str = ""
     voting_status: str = ""  # "open" | "closed"

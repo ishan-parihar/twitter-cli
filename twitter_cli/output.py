@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import click
 import yaml
@@ -35,10 +36,12 @@ def ensure_utf8_streams() -> None:
                 pass  # frozen or non-standard stream, skip
 
 
-def default_structured_format(*, as_json: bool, as_yaml: bool) -> str | None:
+def default_structured_format(*, as_json: bool, as_yaml: bool, as_toon: bool = False) -> str | None:
     """Resolve explicit flags first, then env override, then TTY default."""
-    if as_json and as_yaml:
-        raise click.UsageError("Use only one of --json or --yaml.")
+    if sum([as_json, as_yaml, as_toon]) > 1:
+        raise click.UsageError("Use only one of --json, --yaml, or --toon.")
+    if as_toon:
+        return "toon"
     if as_yaml:
         return "yaml"
     if as_json:
@@ -49,6 +52,8 @@ def default_structured_format(*, as_json: bool, as_yaml: bool) -> str | None:
         return "yaml"
     if output_mode == "json":
         return "json"
+    if output_mode == "toon":
+        return "toon"
     if output_mode == "rich":
         return None
 
@@ -57,22 +62,28 @@ def default_structured_format(*, as_json: bool, as_yaml: bool) -> str | None:
     return None
 
 
-def use_rich_output(*, as_json: bool, as_yaml: bool, compact: bool = False) -> bool:
+def use_rich_output(*, as_json: bool, as_yaml: bool, as_toon: bool = False, compact: bool = False) -> bool:
     """Return True when human-readable rich output should be used."""
     if compact:
         return False
-    return default_structured_format(as_json=as_json, as_yaml=as_yaml) is None
+    return default_structured_format(as_json=as_json, as_yaml=as_yaml, as_toon=as_toon) is None
 
 
 def structured_output_options(command: Callable) -> Callable:
-    """Add --json/--yaml options to a Click command."""
+    """Add --json/--yaml/--toon options to a Click command."""
+    command = click.option("--toon", "as_toon", is_flag=True, help="Output as TOON (token-efficient).")(command)
     command = click.option("--yaml", "as_yaml", is_flag=True, help="Output as YAML.")(command)
     command = click.option("--json", "as_json", is_flag=True, help="Output as JSON.")(command)
     return command
 
 
-def emit_structured(data: Any, *, as_json: bool, as_yaml: bool) -> bool:
+def emit_structured(data: Any, *, as_json: bool, as_yaml: bool, as_toon: bool = False) -> bool:
     """Emit structured output and return True when used."""
+    if as_json and as_yaml and as_toon:
+        raise click.UsageError("Use only one of --json, --yaml, or --toon.")
+    if as_toon:
+        emit_toon(data)
+        return True
     fmt = default_structured_format(as_json=as_json, as_yaml=as_yaml)
     if not fmt:
         return False
@@ -120,6 +131,55 @@ def _normalize_success_payload(data: Any) -> Any:
     if isinstance(data, dict) and data.get("schema_version") == _SCHEMA_VERSION and "ok" in data:
         return data
     return success_payload(data)
+
+
+def _encode_toon(obj: Any, indent: int = 0) -> str:
+    """Encode a Python object to TOON (Token-Oriented Object Notation) format.
+    
+    TOON is a compact, token-efficient format optimized for LLM consumption.
+    Uses single-line notation where possible, minimal whitespace.
+    """
+    if obj is None:
+        return "null"
+    if isinstance(obj, bool):
+        return "true" if obj else "false"
+    if isinstance(obj, (int, float)):
+        return str(obj)
+    if isinstance(obj, str):
+        # Escape special characters
+        escaped = obj.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+        return f'"{escaped}"'
+    if isinstance(obj, list):
+        if not obj:
+            return "[]"
+        # Check if all items are simple (no nested structures)
+        all_simple = all(not isinstance(item, (dict, list)) for item in obj)
+        if all_simple and len(obj) <= 10:
+            items = ", ".join(_encode_toon(item) for item in obj)
+            return f"[{items}]"
+        # Multi-line for complex arrays
+        items = "\n".join("  " * (indent + 1) + _encode_toon(item) for item in obj)
+        return f"[\n{items}\n{'  ' * indent}]"
+    if isinstance(obj, dict):
+        if not obj:
+            return "{}"
+        # Single-line for simple dicts with few keys
+        if len(obj) <= 5 and all(not isinstance(v, (dict, list)) for v in obj.values()):
+            items = ", ".join(f'{k}: {_encode_toon(v)}' for k, v in obj.items())
+            return f"{{ {items} }}"
+        # Multi-line for complex dicts
+        items = "\n".join(
+            "  " * (indent + 1) + f'{k}: {_encode_toon(v, indent + 1)}'
+            for k, v in obj.items()
+        )
+        return f"{{{items}\n{'  ' * indent}}}"
+    # Fallback for other types
+    return _encode_toon(str(obj))
+
+
+def emit_toon(data: Any) -> None:
+    """Emit data in TOON format to stdout."""
+    click.echo(_encode_toon(_normalize_success_payload(data)))
 
 
 def emit_error(

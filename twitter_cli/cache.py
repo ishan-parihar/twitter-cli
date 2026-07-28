@@ -6,7 +6,6 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from .models import Tweet
 
@@ -17,7 +16,7 @@ _CACHE_FILE = _CACHE_DIR / "last_results.json"
 _TTL = 3600  # seconds
 
 
-def save_tweet_cache(tweets: List[Tweet]) -> None:
+def save_tweet_cache(tweets: list[Tweet]) -> None:
     """Persist tweet list so indices can be resolved by `show`."""
     try:
         _CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -32,7 +31,7 @@ def save_tweet_cache(tweets: List[Tweet]) -> None:
         logger.debug("Failed to write tweet cache: %s", exc)
 
 
-def _load_cache() -> Optional[List[dict]]:
+def _load_cache() -> list[dict] | None:
     """Load and validate the cache file; return tweet entries or None if stale/missing."""
     try:
         if not _CACHE_FILE.exists():
@@ -50,7 +49,7 @@ def _load_cache() -> Optional[List[dict]]:
         return None
 
 
-def resolve_cached_tweet(index: int) -> Tuple[Optional[str], int]:
+def resolve_cached_tweet(index: int) -> tuple[str | None, int]:
     """Resolve a 1-based index to a tweet ID, returning (tweet_id, cache_size).
 
     Returns (tweet_id, cache_size) where tweet_id is None if the index

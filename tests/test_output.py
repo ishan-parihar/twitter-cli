@@ -17,7 +17,6 @@ from twitter_cli.output import (
     use_rich_output,
 )
 
-
 # ── ensure_utf8_streams ─────────────────────────────────────────────────
 
 

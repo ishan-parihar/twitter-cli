@@ -38,24 +38,25 @@ import re
 import sys
 import time
 import urllib.parse
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Optional
 
 import click
-from rich.console import Console
 import yaml
+from rich.console import Console
 
 from . import __version__
 from .auth import get_cookies
 from .cache import resolve_cached_tweet, save_tweet_cache
-from .exceptions import TwitterError
 from .client import TwitterClient
 from .config import load_config
+from .exceptions import TwitterError
 from .filter import filter_tweets
 from .formatter import (
     article_to_markdown,
-    print_filter_stats,
     print_article,
+    print_filter_stats,
     print_tweet_detail,
     print_tweet_table,
     print_user_profile,
@@ -75,19 +76,19 @@ from .output import (
 from .serialization import (
     tweet_to_dict,
     tweets_from_json,
-    tweets_to_data,
     tweets_to_compact_json,
+    tweets_to_data,
     tweets_to_json,
     user_profile_to_dict,
     users_to_data,
 )
 
-ConfigDict = Dict[str, Any]
-TweetList = List[Tweet]
+ConfigDict = dict[str, Any]
+TweetList = list[Tweet]
 FetchTweets = Callable[[int], TweetList]
 OptionalPath = Optional[str]
 StructuredMode = Optional[str]
-WritePayload = Dict[str, Any]
+WritePayload = dict[str, Any]
 WriteOperation = Callable[[TwitterClient], WritePayload]
 
 logger = logging.getLogger(__name__)
@@ -245,7 +246,7 @@ def _emit_mode_payload(payload: object, mode: StructuredMode) -> bool:
     return True
 
 
-def _print_lines(lines: List[str], mode: StructuredMode) -> None:
+def _print_lines(lines: list[str], mode: StructuredMode) -> None:
     if mode:
         return
     for line in lines:
@@ -256,7 +257,7 @@ def _handle_structured_runtime_error(
     exc: Exception,
     *,
     mode: StructuredMode,
-    details: Optional[Dict[str, Any]] = None,
+    details: dict[str, Any] | None = None,
 ) -> None:
     if _emit_mode_payload(
         error_payload(_error_code_from_exc(exc), str(exc), details=details),
@@ -271,10 +272,10 @@ def _run_write_command(
     as_json: bool,
     as_yaml: bool,
     operation: WriteOperation,
-    progress_lines: Optional[List[str]] = None,
-    success_lines: Optional[List[str]] = None,
-    error_details: Optional[Dict[str, Any]] = None,
-) -> Optional[WritePayload]:
+    progress_lines: list[str] | None = None,
+    success_lines: list[str] | None = None,
+    error_details: dict[str, Any] | None = None,
+) -> WritePayload | None:
     mode = _structured_mode(as_json=as_json, as_yaml=as_yaml)
     try:
         client = _get_client(load_config())
@@ -291,22 +292,41 @@ def _run_write_command(
     return payload
 
 
-@click.group()
-@click.option("--verbose", "-v", is_flag=True, help="Enable debug logging.")
-@click.option("--compact", "-c", is_flag=True, help="Compact output (minimal fields, LLM-friendly).")
-@click.version_option(version=__version__)
+@click.group(
+    invoke_without_command=True,
+    context_settings={"help_option_names": ["-h", "--help"], "ignore_unknown_options": False},
+)
+@click.version_option(version=__version__, prog_name="twitter")
+@click.option("--config", "-C", type=click.Path(exists=True, path_type=Path), help="Config file path.")
+@click.option("--compact", "-c", is_flag=True, help="Compact output (single line per tweet).")
+@click.option("--full-text", is_flag=True, help="Show full tweet text (no truncation).")
+@click.option("--debug", is_flag=True, help="Enable debug logging.")
+@click.option("--quiet", "-q", is_flag=True, help="Suppress progress output.")
+@click.option("--fields", help="Comma-separated list of fields to include in output (e.g., id,author,text,likes,time).")
+@click.option("--format", "output_format", type=click.Choice(["table", "json", "yaml", "toon"]), default="table", help="Output format.")
+@click.option("--verbose", "-V", is_flag=True, help="Enable debug logging.")
 @click.pass_context
-def cli(ctx, verbose, compact):
-    # type: (Any, bool, bool) -> None
-    """twitter — Twitter/X CLI tool 🐦"""
+def cli(ctx, config, compact, full_text, debug, quiet, fields, output_format, verbose):
+    # type: (Any, Optional[Path], bool, bool, bool, bool, Optional[str], str, bool) -> None
+    """Twitter/X CLI — read timelines, search, post, and more."""
     ensure_utf8_streams()
-    _setup_logging(verbose)
+    _setup_logging(verbose or debug)
     ctx.ensure_object(dict)
+    ctx.obj["config_path"] = config
     ctx.obj["compact"] = compact
+    ctx.obj["full_text"] = full_text
+    ctx.obj["debug"] = debug
+    ctx.obj["quiet"] = quiet
+    ctx.obj["fields"] = fields.split(",") if fields else None
+    ctx.obj["output_format"] = output_format
+
+    # Content-first: if no subcommand invoked, show home timeline
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(ctx.command.commands["feed"])
 
 
-def _fetch_and_display(fetch_fn, label, emoji, max_count, as_json, as_yaml, output_file, do_filter, config=None, compact=False, full_text=False):
-    # type: (Any, str, str, Optional[int], bool, bool, Optional[str], bool, Optional[dict], bool, bool) -> None
+def _fetch_and_display(ctx, fetch_fn, label, emoji, max_count, as_json, as_yaml, as_toon, output_file, do_filter, config=None, compact=False, full_text=False):
+    # type: (Any, Any, str, str, Optional[int], bool, bool, bool, Optional[str], bool, Optional[dict], bool, bool) -> None
     """Common fetch-filter-display logic for timeline-like commands."""
     if config is None:
         config = load_config()
@@ -331,12 +351,12 @@ def _fetch_and_display(fetch_fn, label, emoji, max_count, as_json, as_yaml, outp
             console.print("💾 Saved to %s\n" % output_file)
 
     if compact:
-        click.echo(tweets_to_compact_json(filtered))
+        click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
         return
 
     save_tweet_cache(filtered)
 
-    if emit_structured(tweets_to_data(filtered), as_json=as_json, as_yaml=as_yaml):
+    if emit_structured(tweets_to_data(filtered, ctx.obj.get("fields")), as_json=as_json, as_yaml=as_yaml):
         return
 
     print_tweet_table(
@@ -349,7 +369,7 @@ def _fetch_and_display(fetch_fn, label, emoji, max_count, as_json, as_yaml, outp
     console.print()
 
 
-def _emit_timeline_structured(tweets, next_cursor, *, as_json, as_yaml):
+def _emit_timeline_structured(tweets, next_cursor, *, as_json, as_yaml, as_toon):
     # type: (TweetList, Optional[str], bool, bool) -> bool
     """Emit timeline data with pagination metadata while keeping `data` a tweet list."""
     payload = success_payload(tweets_to_data(tweets))
@@ -400,7 +420,7 @@ def _inherit_flag(ctx, name, value):
     return bool(value or parent.params.get(name, False))
 
 
-@cli.command()
+@cli.command(name="feed")
 @click.option(
     "--type",
     "-t",
@@ -422,8 +442,8 @@ def _inherit_flag(ctx, name, value):
     help="Include promoted tweets when the timeline endpoint exposes them.",
 )
 @click.pass_context
-def feed(ctx, feed_type, max_count, cursor, as_json, as_yaml, input_file, output_file, do_filter, full_text, include_promoted):
-    # type: (Any, str, Optional[int], Optional[str], bool, bool, Optional[str], Optional[str], bool, bool, bool) -> None
+def feed_cmd(ctx, feed_type, max_count, cursor, as_json, as_yaml, as_toon, input_file, output_file, do_filter, full_text, include_promoted):
+    # type: (Any, str, Optional[int], Optional[str], bool, bool, bool, Optional[str], Optional[str], bool, bool, bool) -> None
     """Fetch home timeline with optional filtering."""
     compact = ctx.obj.get("compact", False)
     rich_output = use_rich_output(as_json=as_json, as_yaml=as_yaml, compact=compact)
@@ -471,12 +491,12 @@ def feed(ctx, feed_type, max_count, cursor, as_json, as_yaml, input_file, output
             console.print("💾 Saved filtered tweets to %s\n" % output_file)
 
     if compact:
-        click.echo(tweets_to_compact_json(filtered))
+        click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
         return
 
     save_tweet_cache(filtered)
 
-    if _emit_timeline_structured(filtered, next_cursor, as_json=as_json, as_yaml=as_yaml):
+    if _emit_timeline_structured(filtered, next_cursor, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
         return
 
     title = "👥 Following" if feed_type == "following" else "📱 Twitter"
@@ -493,7 +513,7 @@ def feed(ctx, feed_type, max_count, cursor, as_json, as_yaml, input_file, output
 @click.option("--filter", "do_filter", is_flag=True, help="Enable score-based filtering.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def favorites(ctx, max_count, as_json, as_yaml, output_file, do_filter, full_text):
+def favorites(ctx, max_count, as_json, as_yaml, as_toon, output_file, do_filter, full_text):
     # type: (Any, Optional[int], bool, bool, Optional[str], bool, bool) -> None
     """Fetch bookmarked (favorite) tweets."""
     _run_bookmarks_command(
@@ -514,7 +534,7 @@ def favorites(ctx, max_count, as_json, as_yaml, output_file, do_filter, full_tex
 @click.option("--filter", "do_filter", is_flag=True, help="Enable score-based filtering.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def bookmarks(ctx, max_count, as_json, as_yaml, output_file, do_filter, full_text):
+def bookmarks(ctx, max_count, as_json, as_yaml, as_toon, output_file, do_filter, full_text):
     # type: (Any, Optional[int], bool, bool, Optional[str], bool, bool) -> None
     """Fetch bookmarked tweets, or manage bookmark folders."""
     if ctx.invoked_subcommand is None:
@@ -538,7 +558,7 @@ def bookmarks(ctx, max_count, as_json, as_yaml, output_file, do_filter, full_tex
 @click.option("--filter", "do_filter", is_flag=True, help="Enable score-based filtering.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def bookmarks_folders(ctx, folder_id, max_count, since, as_json, as_yaml, output_file, do_filter, full_text):
+def bookmarks_folders(ctx, folder_id, max_count, since, as_json, as_yaml, as_toon, output_file, do_filter, full_text):
     # type: (Any, Optional[str], Optional[int], Optional[str], bool, bool, Optional[str], bool, bool) -> None
     """List bookmark folders, or fetch tweets from a folder.
 
@@ -669,8 +689,8 @@ def _run_bookmark_folder_timeline(folder_id, max_count, since, as_json, as_yaml,
 @cli.command()
 @click.argument("screen_name")
 @structured_output_options
-def user(screen_name, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def user(screen_name, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """View a user's profile. SCREEN_NAME is the @handle (without @)."""
     screen_name = screen_name.lstrip("@")
     config = load_config()
@@ -695,7 +715,7 @@ def user(screen_name, as_json, as_yaml):
 @click.option("--output", "-o", "output_file", type=str, default=None, help="Save tweets to JSON file.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def user_posts(ctx, screen_name, max_count, as_json, as_yaml, output_file, full_text):
+def user_posts(ctx, screen_name, max_count, as_json, as_yaml, as_toon, output_file, full_text):
     # type: (Any, str, int, bool, bool, Optional[str], bool) -> None
     """List a user's tweets. SCREEN_NAME is the @handle (without @)."""
     screen_name = screen_name.lstrip("@")
@@ -750,7 +770,7 @@ def user_posts(ctx, screen_name, max_count, as_json, as_yaml, output_file, full_
 @click.option("--filter", "do_filter", is_flag=True, help="Enable score-based filtering.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def search(ctx, query, product, from_user, to_user, lang, since, until, has, exclude, min_likes, min_retweets, max_count, as_json, as_yaml, output_file, do_filter, full_text):
+def search(ctx, query, product, from_user, to_user, lang, since, until, has, exclude, min_likes, min_retweets, max_count, as_json, as_yaml, as_toon, output_file, do_filter, full_text):
     # type: (Any, str, str, Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], tuple, tuple, Optional[int], Optional[int], int, bool, bool, Optional[str], bool, bool) -> None
     """Search tweets by QUERY string with optional advanced filters.
 
@@ -790,8 +810,9 @@ def search(ctx, query, product, from_user, to_user, lang, since, until, has, exc
         rich_output = use_rich_output(as_json=as_json, as_yaml=as_yaml, compact=compact)
         client = _get_client(config, quiet=not rich_output)
         _fetch_and_display(
+            ctx,
             lambda count: client.fetch_search(composed_query, count, product),
-            "'%s' (%s)" % (composed_query, product), "🔍", max_count, as_json, as_yaml, output_file, do_filter, config,
+            "'%s' (%s)" % (composed_query, product), "🔍", max_count, as_json, as_yaml, as_toon, output_file, do_filter, config,
             compact=compact, full_text=full_text,
         )
     _run_guarded(_run)
@@ -805,7 +826,7 @@ def search(ctx, query, product, from_user, to_user, lang, since, until, has, exc
 @click.option("--filter", "do_filter", is_flag=True, help="Enable score-based filtering.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def likes(ctx, screen_name, max_count, as_json, as_yaml, output_file, do_filter, full_text):
+def likes(ctx, screen_name, max_count, as_json, as_yaml, as_toon, output_file, do_filter, full_text):
     # type: (Any, str, int, bool, bool, Optional[str], bool, bool) -> None
     """Show tweets liked by a user. SCREEN_NAME is the @handle (without @).
 
@@ -855,7 +876,7 @@ def likes(ctx, screen_name, max_count, as_json, as_yaml, output_file, do_filter,
 @click.option("--full-text", is_flag=True, help="Show full reply text in table output.")
 @structured_output_options
 @click.pass_context
-def tweet(ctx, tweet_id, max_count, full_text, as_json, as_yaml):
+def tweet(ctx, tweet_id, max_count, full_text, as_json, as_yaml, as_toon):
     # type: (Any, str, int, bool, bool, bool) -> None
     """View a tweet and its replies. TWEET_ID is the numeric tweet ID or full URL."""
     compact = ctx.obj.get("compact", False)
@@ -874,10 +895,10 @@ def tweet(ctx, tweet_id, max_count, full_text, as_json, as_yaml):
     except (TwitterError, RuntimeError) as exc:
         _exit_with_error(exc)
 
-    _emit_tweet_detail(tweets, compact=compact, as_json=as_json, as_yaml=as_yaml, full_text=full_text)
+    _emit_tweet_detail(tweets, compact=compact, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon, full_text=full_text)
 
 
-def _emit_tweet_detail(tweets, compact, as_json, as_yaml, full_text):
+def _emit_tweet_detail(tweets, compact, as_json, as_yaml, as_toon, full_text):
     # type: (list, bool, bool, bool, bool) -> None
     """Render tweet detail + replies in the requested output format."""
     if compact:
@@ -908,7 +929,7 @@ def _print_show_hint():
 @click.option("--output", "-o", "output_file", type=str, default=None, help="Save tweet detail as JSON to file.")
 @structured_output_options
 @click.pass_context
-def show(ctx, index, max_count, full_text, output_file, as_json, as_yaml):
+def show(ctx, index, max_count, full_text, output_file, as_json, as_yaml, as_toon):
     # type: (Any, int, Optional[int], bool, Optional[str], bool, bool) -> None
     """View tweet #INDEX from the last feed/search results."""
     compact = ctx.obj.get("compact", False)
@@ -943,7 +964,7 @@ def show(ctx, index, max_count, full_text, output_file, as_json, as_yaml):
         if rich_output:
             console.print("💾 Saved to %s\n" % output_file)
 
-    _emit_tweet_detail(tweets, compact=compact, as_json=as_json, as_yaml=as_yaml, full_text=full_text)
+    _emit_tweet_detail(tweets, compact=compact, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon, full_text=full_text)
 
 
 @cli.command()
@@ -952,8 +973,8 @@ def show(ctx, index, max_count, full_text, output_file, as_json, as_yaml):
 @click.option("--markdown", "-m", "as_markdown", is_flag=True, help="Output article as Markdown.")
 @click.option("--output", "-o", "output_file", type=str, default=None, help="Save article Markdown to file.")
 @click.pass_context
-def article(ctx, tweet_id, as_json, as_yaml, as_markdown, output_file):
-    # type: (Any, str, bool, bool, bool, Optional[str]) -> None
+def article(ctx, tweet_id, as_json, as_yaml, as_toon, as_markdown, output_file):
+    # type: (Any, str, bool, bool, bool, bool, Optional[str]) -> None
     """Fetch a Twitter Article. TWEET_ID is the numeric tweet ID or full URL."""
     compact = ctx.obj.get("compact", False)
     if compact:
@@ -1013,7 +1034,7 @@ def article(ctx, tweet_id, as_json, as_yaml, as_markdown, output_file):
 @click.option("--filter", "do_filter", is_flag=True, help="Enable score-based filtering.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def list_timeline(ctx, list_id, max_count, cursor, as_json, as_yaml, do_filter, full_text):
+def list_timeline(ctx, list_id, max_count, cursor, as_json, as_yaml, as_toon, do_filter, full_text):
     # type: (Any, str, int, Optional[str], bool, bool, bool, bool) -> None
     """Fetch tweets from a Twitter List. LIST_ID is the numeric list ID."""
     compact = ctx.obj.get("compact", False)
@@ -1042,12 +1063,12 @@ def list_timeline(ctx, list_id, max_count, cursor, as_json, as_yaml, do_filter, 
         filtered = _apply_filter(tweets, do_filter, config, rich_output=rich_output)
 
         if compact:
-            click.echo(tweets_to_compact_json(filtered))
+            click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
             return
 
         save_tweet_cache(filtered)
 
-        if _emit_timeline_structured(filtered, next_cursor, as_json=as_json, as_yaml=as_yaml):
+        if _emit_timeline_structured(filtered, next_cursor, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
             return
 
         print_tweet_table(
@@ -1066,7 +1087,7 @@ def _fetch_and_display_users(
     screen_name: str,
     fetch_fn_name: str,
     label: str,
-    max_count: Optional[int],
+    max_count: int | None,
     as_json: bool,
     as_yaml: bool,
 ) -> None:
@@ -1101,7 +1122,7 @@ def _fetch_and_display_users(
 @click.argument("screen_name")
 @click.option("--max", "-n", "max_count", type=int, default=None, help="Max users to fetch.")
 @structured_output_options
-def followers(screen_name, max_count, as_json, as_yaml):
+def followers(screen_name, max_count, as_json, as_yaml, as_toon):
     # type: (str, int, bool, bool) -> None
     """List followers of a user. SCREEN_NAME is the @handle (without @)."""
     _fetch_and_display_users(screen_name, "fetch_followers", "followers", max_count, as_json, as_yaml)
@@ -1111,7 +1132,7 @@ def followers(screen_name, max_count, as_json, as_yaml):
 @click.argument("screen_name")
 @click.option("--max", "-n", "max_count", type=int, default=None, help="Max users to fetch.")
 @structured_output_options
-def following(screen_name, max_count, as_json, as_yaml):
+def following(screen_name, max_count, as_json, as_yaml, as_toon):
     # type: (str, int, bool, bool) -> None
     """List accounts a user is following. SCREEN_NAME is the @handle (without @)."""
     _fetch_and_display_users(screen_name, "fetch_following", "following", max_count, as_json, as_yaml)
@@ -1177,7 +1198,7 @@ def _write_action(emoji, action_desc, client_method, tweet_id, as_json=False, as
 @click.option("--image", "-i", "images", multiple=True, type=click.Path(exists=True), help="Attach image (up to 4). Repeatable.")
 @click.option("--video", "-v", "videos", multiple=True, type=click.Path(exists=True), help="Attach video (1). Repeatable.")
 @structured_output_options
-def post(text, reply_to, images, videos, as_json, as_yaml):
+def post(text, reply_to, images, videos, as_json, as_yaml, as_toon):
     # type: (str, Optional[str], tuple, tuple, bool, bool) -> None
     """Post a new tweet. TEXT is the tweet content.
 
@@ -1219,7 +1240,7 @@ def post(text, reply_to, images, videos, as_json, as_yaml):
 @click.option("--image", "-i", "images", multiple=True, type=click.Path(exists=True), help="Attach image (up to 4). Repeatable.")
 @click.option("--video", "-v", "videos", multiple=True, type=click.Path(exists=True), help="Attach video (1). Repeatable.")
 @structured_output_options
-def reply_tweet(tweet_id, text, images, videos, as_json, as_yaml):
+def reply_tweet(tweet_id, text, images, videos, as_json, as_yaml, as_toon):
     # type: (str, str, tuple, tuple, bool, bool) -> None
     """Reply to a tweet. TWEET_ID is the tweet to reply to, TEXT is the reply content."""
     tweet_id = _normalize_tweet_id(tweet_id)
@@ -1253,7 +1274,7 @@ def reply_tweet(tweet_id, text, images, videos, as_json, as_yaml):
 @click.option("--image", "-i", "images", multiple=True, type=click.Path(exists=True), help="Attach image (up to 4). Repeatable.")
 @click.option("--video", "-v", "videos", multiple=True, type=click.Path(exists=True), help="Attach video (1). Repeatable.")
 @structured_output_options
-def quote_tweet(tweet_id, text, images, videos, as_json, as_yaml):
+def quote_tweet(tweet_id, text, images, videos, as_json, as_yaml, as_toon):
     # type: (str, str, tuple, tuple, bool, bool) -> None
     """Quote-tweet a tweet. TWEET_ID is the tweet to quote, TEXT is the commentary."""
     tweet_id = _normalize_tweet_id(tweet_id)
@@ -1283,8 +1304,8 @@ def quote_tweet(tweet_id, text, images, videos, as_json, as_yaml):
 
 @cli.command(name="status")
 @structured_output_options
-def status(as_json, as_yaml):
-    # type: (bool, bool) -> None
+def status(as_json, as_yaml, as_toon):
+    # type: (bool, bool, bool) -> None
     """Check whether the current Twitter/X session is authenticated."""
     config = load_config()
     try:
@@ -1318,8 +1339,8 @@ def media(ctx):
 @media.command(name="status")
 @click.argument("media_id")
 @structured_output_options
-def media_status(media_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def media_status(media_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Check media upload processing status."""
     config = load_config()
     try:
@@ -1368,7 +1389,7 @@ def auth(ctx):
 @auth.command(name="status")
 @structured_output_options
 def auth_status(as_json, as_yaml):
-    # type: (bool, bool) -> None
+    # type: (bool, bool, bool) -> None
     """Check authentication status and show current user."""
     config = load_config()
     try:
@@ -1394,7 +1415,7 @@ def auth_status(as_json, as_yaml):
 @click.confirmation_option(prompt="Are you sure you want to clear stored authentication?")
 @structured_output_options
 def auth_clear(as_json, as_yaml):
-    # type: (bool, bool) -> None
+    # type: (bool, bool, bool) -> None
     """Clear stored authentication (cookies)."""
     # Clear environment variables if set
     import os
@@ -1443,8 +1464,8 @@ def auth_clear(as_json, as_yaml):
     help="OAuth2 scope (for oauth2 type).",
 )
 @structured_output_options
-def auth_login(auth_type, scope, as_json, as_yaml):
-    # type: (str, str, bool, bool) -> None
+def auth_login(auth_type, scope, as_json, as_yaml, as_toon):
+    # type: (str, str, bool, bool, bool) -> None
     """Authenticate with Twitter using OAuth.
 
     Three authentication types:
@@ -1457,7 +1478,9 @@ def auth_login(auth_type, scope, as_json, as_yaml):
       OAuth 2.0:   TWITTER_OAUTH2_CLIENT_ID, TWITTER_OAUTH2_CLIENT_SECRET
       Redirect URI: TWITTER_REDIRECT_URI (default: http://localhost:8080/callback)
     """
-    from .oauth import create_oauth_manager, OAuthManager
+    import os
+
+    from .oauth import create_oauth_manager
 
     oauth1_key = os.environ.get("TWITTER_OAUTH1_CONSUMER_KEY", "")
     oauth1_secret = os.environ.get("TWITTER_OAUTH1_CONSUMER_SECRET", "")
@@ -1474,18 +1497,19 @@ def auth_login(auth_type, scope, as_json, as_yaml):
     )
 
     try:
+        payload = {}  # type: Dict[str, Any]
         if auth_type == "oauth2":
             if not oauth2_id or not oauth2_secret:
                 raise click.UsageError(
                     "OAuth 2.0 requires TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET"
                 )
-            tokens = manager.oauth2_run_flow(scope)
+            oauth2_tokens = manager.oauth2_run_flow(scope)
             payload = {
                 "auth_type": "oauth2",
-                "access_token": tokens.access_token,
-                "refresh_token": tokens.refresh_token,
-                "expires_in": tokens.expires_in,
-                "scope": tokens.scope,
+                "access_token": oauth2_tokens.access_token,
+                "refresh_token": oauth2_tokens.refresh_token,
+                "expires_in": oauth2_tokens.expires_in,
+                "scope": oauth2_tokens.scope,
             }
 
         elif auth_type == "oauth1":
@@ -1494,12 +1518,11 @@ def auth_login(auth_type, scope, as_json, as_yaml):
                     "OAuth 1.0a requires TWITTER_OAUTH1_CONSUMER_KEY and TWITTER_OAUTH1_CONSUMER_SECRET"
                 )
             # OAuth 1.0a flow
-            from .oauth import OAuth1Tokens
-            tokens = manager.oauth1_run_flow()
+            oauth1_tokens = manager.oauth1_run_flow()  # type: OAuth1Tokens
             payload = {
                 "auth_type": "oauth1",
-                "access_token": tokens.oauth_token,
-                "access_token_secret": tokens.oauth_token_secret,
+                "access_token": oauth1_tokens.oauth_token,
+                "access_token_secret": oauth1_tokens.oauth_token_secret,
             }
 
         elif auth_type == "app_only":
@@ -1507,11 +1530,11 @@ def auth_login(auth_type, scope, as_json, as_yaml):
                 raise click.UsageError(
                     "App-Only requires TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET"
                 )
-            tokens = manager.app_only_run_flow()
+            app_only_tokens = manager.app_only_run_flow()  # type: AppOnlyToken
             payload = {
                 "auth_type": "app_only",
-                "access_token": tokens.access_token,
-                "expires_in": tokens.expires_in,
+                "access_token": app_only_tokens.access_token,
+                "expires_in": app_only_tokens.expires_in,
             }
 
         else:
@@ -1532,9 +1555,11 @@ def auth_login(auth_type, scope, as_json, as_yaml):
 @auth.command(name="refresh")
 @click.argument("refresh_token")
 @structured_output_options
-def auth_refresh(refresh_token, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def auth_refresh(refresh_token, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Refresh OAuth 2.0 access token using refresh token."""
+    import os
+
     from .oauth import create_oauth_manager
 
     oauth2_id = os.environ.get("TWITTER_OAUTH2_CLIENT_ID", "")
@@ -1571,8 +1596,8 @@ def auth_refresh(refresh_token, as_json, as_yaml):
 
 @cli.command(name="whoami")
 @structured_output_options
-def whoami(as_json, as_yaml):
-    # type: (bool, bool) -> None
+def whoami(as_json, as_yaml, as_toon):
+    # type: (bool, bool, bool) -> None
     """Show the currently authenticated user's profile."""
     config = load_config()
     try:
@@ -1594,8 +1619,8 @@ def whoami(as_json, as_yaml):
 @cli.command(name="follow")
 @click.argument("screen_name")
 @structured_output_options
-def follow_user(screen_name, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def follow_user(screen_name, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Follow a user. SCREEN_NAME is the @handle (without @)."""
     screen_name = screen_name.lstrip("@")
 
@@ -1617,8 +1642,8 @@ def follow_user(screen_name, as_json, as_yaml):
 @cli.command(name="unfollow")
 @click.argument("screen_name")
 @structured_output_options
-def unfollow_user(screen_name, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def unfollow_user(screen_name, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Unfollow a user. SCREEN_NAME is the @handle (without @)."""
     screen_name = screen_name.lstrip("@")
 
@@ -1641,8 +1666,8 @@ def unfollow_user(screen_name, as_json, as_yaml):
 @click.argument("tweet_id")
 @click.confirmation_option(prompt="Are you sure you want to delete this tweet?")
 @structured_output_options
-def delete_tweet(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def delete_tweet(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Delete a tweet. TWEET_ID is the numeric tweet ID."""
     _write_action("🗑️", "Deleting tweet", "delete_tweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
@@ -1650,8 +1675,8 @@ def delete_tweet(tweet_id, as_json, as_yaml):
 @cli.command()
 @click.argument("tweet_id")
 @structured_output_options
-def like(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def like(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Like a tweet. TWEET_ID is the numeric tweet ID."""
     _write_action("❤️", "Liking tweet", "like_tweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
@@ -1659,8 +1684,8 @@ def like(tweet_id, as_json, as_yaml):
 @cli.command()
 @click.argument("tweet_id")
 @structured_output_options
-def unlike(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def unlike(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Unlike a tweet. TWEET_ID is the numeric tweet ID."""
     _write_action("💔", "Unliking tweet", "unlike_tweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
@@ -1668,8 +1693,8 @@ def unlike(tweet_id, as_json, as_yaml):
 @cli.command()
 @click.argument("tweet_id")
 @structured_output_options
-def retweet(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def retweet(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Retweet a tweet. TWEET_ID is the numeric tweet ID."""
     _write_action("🔄", "Retweeting", "retweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
@@ -1677,8 +1702,8 @@ def retweet(tweet_id, as_json, as_yaml):
 @cli.command()
 @click.argument("tweet_id")
 @structured_output_options
-def unretweet(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def unretweet(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Undo a retweet. TWEET_ID is the numeric tweet ID."""
     _write_action("🔄", "Undoing retweet", "unretweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
@@ -1686,8 +1711,8 @@ def unretweet(tweet_id, as_json, as_yaml):
 @cli.command()
 @click.argument("tweet_id")
 @structured_output_options
-def favorite(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def favorite(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Bookmark (favorite) a tweet. TWEET_ID is the numeric tweet ID."""
     _write_action("🔖", "Bookmarking tweet", "bookmark_tweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
@@ -1695,8 +1720,8 @@ def favorite(tweet_id, as_json, as_yaml):
 @cli.command()
 @click.argument("tweet_id")
 @structured_output_options
-def bookmark(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def bookmark(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Bookmark a tweet. TWEET_ID is the numeric tweet ID."""
     _write_action("🔖", "Bookmarking tweet", "bookmark_tweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
@@ -1704,8 +1729,8 @@ def bookmark(tweet_id, as_json, as_yaml):
 @cli.command()
 @click.argument("tweet_id")
 @structured_output_options
-def unfavorite(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def unfavorite(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Remove a tweet from bookmarks (unfavorite). TWEET_ID is the numeric tweet ID."""
     _write_action("🔖", "Removing bookmark", "unbookmark_tweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
@@ -1713,12 +1738,72 @@ def unfavorite(tweet_id, as_json, as_yaml):
 @cli.command()
 @click.argument("tweet_id")
 @structured_output_options
-def unbookmark(tweet_id, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def unbookmark(tweet_id, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Remove a tweet from bookmarks. TWEET_ID is the numeric tweet ID."""
     _write_action("🔖", "Removing bookmark", "unbookmark_tweet", tweet_id, as_json=as_json, as_yaml=as_yaml)
 
 
+
+
+
+@cli.command(name="session-install")
+@click.option("--shell", type=click.Choice(["bash", "zsh", "fish"]), help="Shell to install hooks for.")
+@click.option("--scope", type=click.Choice(["user", "project"]), default="user", help="Installation scope.")
+@structured_output_options
+@click.pass_context
+def session_install(ctx, shell, scope, as_json, as_yaml, as_toon):
+    """Install shell hooks for agent session integration.
+    
+    Adds a hook to run `twitter` on shell startup, providing live
+    timeline context to AI agents at session start.
+    """
+    hooks = {
+        "bash": "~/.bashrc",
+        "zsh": "~/.zshrc", 
+        "fish": "~/.config/fish/config.fish",
+    }
+    hook_file = Path(hooks[shell or "bash"]).expanduser()
+    hook_line = f"twitter --format yaml --compact 2>/dev/null || true"
+    
+    if hook_file.exists():
+        content = hook_file.read_text()
+        if hook_line in content:
+            payload = {"ok": True, "schema_version": "1", "data": {"status": "already_installed", "file": str(hook_file)}}
+        else:
+            hook_file.write_text(content + f"\n{hook_line}\n")
+            payload = {"ok": True, "schema_version": "1", "data": {"status": "installed", "file": str(hook_file)}}
+    else:
+        hook_file.parent.mkdir(parents=True, exist_ok=True)
+        hook_file.write_text(f"{hook_line}\n")
+        payload = {"ok": True, "schema_version": "1", "data": {"status": "installed", "file": str(hook_file)}}
+    
+    emit_structured(payload, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon)
+
+
+
+@cli.command(name="help", context_settings={"ignore_unknown_options": True})
+@click.argument("command", required=False)
+@click.pass_context
+def help_cmd(ctx, command):
+    """Show contextual help with flag inheritance."""
+    if command is None:
+        click.echo(ctx.parent.get_help())
+        return
+    
+    # Get the subcommand
+    if command in ctx.command.commands:
+        subcmd = ctx.command.commands[command]
+        # Show command help with inherited flags
+        click.echo(subcmd.get_help(ctx))
+        # Show contextual suggestions
+        inherited = {"--max", "--compact", "--filter", "--format", "--fields", "--full-text"}
+        click.echo("\n[dim]Inherited flags:[/dim]")
+        for flag in sorted(inherited):
+            click.echo(f"  {flag}")
+    else:
+        click.echo(f"Unknown command: {command}")
+        ctx.exit(1)
 
 
 if __name__ == "__main__":
@@ -1728,8 +1813,8 @@ if __name__ == "__main__":
 @cli.command(name="block")
 @click.argument("screen_name")
 @structured_output_options
-def block_user(screen_name, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def block_user(screen_name, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Block a user. SCREEN_NAME is the @handle (without @)."""
     screen_name = screen_name.lstrip("@")
 
@@ -1751,8 +1836,8 @@ def block_user(screen_name, as_json, as_yaml):
 @cli.command(name="unblock")
 @click.argument("screen_name")
 @structured_output_options
-def unblock_user(screen_name, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def unblock_user(screen_name, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Unblock a user. SCREEN_NAME is the @handle (without @)."""
     screen_name = screen_name.lstrip("@")
 
@@ -1774,8 +1859,8 @@ def unblock_user(screen_name, as_json, as_yaml):
 @cli.command(name="mute")
 @click.argument("screen_name")
 @structured_output_options
-def mute_user(screen_name, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def mute_user(screen_name, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Mute a user. SCREEN_NAME is the @handle (without @)."""
     screen_name = screen_name.lstrip("@")
 
@@ -1797,8 +1882,8 @@ def mute_user(screen_name, as_json, as_yaml):
 @cli.command(name="unmute")
 @click.argument("screen_name")
 @structured_output_options
-def unmute_user(screen_name, as_json, as_yaml):
-    # type: (str, bool, bool) -> None
+def unmute_user(screen_name, as_json, as_yaml, as_toon):
+    # type: (str, bool, bool, bool) -> None
     """Unmute a user. SCREEN_NAME is the @handle (without @)."""
     screen_name = screen_name.lstrip("@")
 
@@ -1831,7 +1916,7 @@ def dm(ctx):
 @click.option("--max", "-n", "max_count", type=int, default=None, help="Max conversations to fetch.")
 @structured_output_options
 @click.pass_context
-def dm_conversations(ctx, max_count, as_json, as_yaml):
+def dm_conversations(ctx, max_count, as_json, as_yaml, as_toon):
     """List DM conversations."""
     compact = ctx.obj.get("compact", False)
     config = load_config()
@@ -1861,11 +1946,13 @@ def dm_conversations(ctx, max_count, as_json, as_yaml):
         table.add_column("Participants", style="bold")
         table.add_column("Last Message", style="dim")
         for conv in conversations:
-            participants = ", ".join("@" + u.screen_name for u in conv.participants[:3])
-            if len(conv.participants) > 3:
-                participants += " +%d more" % (len(conv.participants) - 3)
-            last_msg = conv.last_message.text[:50] if conv.last_message else ""
-            table.add_row(conv.id, participants, last_msg)
+            participants_list = conv.get("participants", [])
+            participants = ", ".join("@" + u.get("screen_name", "") for u in participants_list[:3])
+            if len(participants_list) > 3:
+                participants += " +%d more" % (len(participants_list) - 3)
+            last_msg_obj = conv.get("last_message")
+            last_msg = last_msg_obj.get("text", "")[:50] if last_msg_obj else ""
+            table.add_row(conv.get("id", ""), participants, last_msg)
         console.print(table)
         console.print()
 
@@ -1875,7 +1962,7 @@ def dm_conversations(ctx, max_count, as_json, as_yaml):
 @click.option("--max", "-n", "max_count", type=int, default=50, help="Max messages to fetch.")
 @structured_output_options
 @click.pass_context
-def dm_messages(ctx, conversation_id, max_count, as_json, as_yaml):
+def dm_messages(ctx, conversation_id, max_count, as_json, as_yaml, as_toon):
     """Fetch messages from a DM conversation."""
     compact = ctx.obj.get("compact", False)
     config = load_config()
@@ -1905,7 +1992,11 @@ def dm_messages(ctx, conversation_id, max_count, as_json, as_yaml):
         table.add_column("Sender", style="bold")
         table.add_column("Message", style="white")
         for msg in messages:
-            table.add_row(msg.created_at[:19] if msg.created_at else "", "@" + msg.sender_screen_name, msg.text)
+            table.add_row(
+                msg.get("created_at", "")[:19] if msg.get("created_at") else "",
+                "@" + msg.get("sender_screen_name", ""),
+                msg.get("text", "")
+            )
         console.print(table)
         console.print()
 
@@ -1913,7 +2004,7 @@ def dm_messages(ctx, conversation_id, max_count, as_json, as_yaml):
 @dm.command(name="create")
 @click.argument("participants", nargs=-1, required=True)
 @structured_output_options
-def dm_create(participants, as_json, as_yaml):
+def dm_create(participants, as_json, as_yaml, as_toon):
     """Create a new DM conversation with participants. PARTICIPANTS are @handles (without @)."""
     screen_names = [p.lstrip("@") for p in participants]
 
@@ -1935,7 +2026,7 @@ def dm_create(participants, as_json, as_yaml):
 @click.argument("conversation_id")
 @click.argument("text")
 @structured_output_options
-def dm_send(conversation_id, text, as_json, as_yaml):
+def dm_send(conversation_id, text, as_json, as_yaml, as_toon):
     """Send a DM to a conversation. CONVERSATION_ID is the DM conversation ID."""
     def operation(client: TwitterClient) -> WritePayload:
         msg_id = client.send_dm(conversation_id, text)
@@ -1954,7 +2045,7 @@ def dm_send(conversation_id, text, as_json, as_yaml):
 @dm.command(name="mark-read")
 @click.argument("conversation_id")
 @structured_output_options
-def dm_mark_read(conversation_id, as_json, as_yaml):
+def dm_mark_read(conversation_id, as_json, as_yaml, as_toon):
     """Mark a DM conversation as read."""
     def operation(client: TwitterClient) -> WritePayload:
         client.mark_dm_conversation_read(conversation_id)
@@ -1973,7 +2064,7 @@ def dm_mark_read(conversation_id, as_json, as_yaml):
 @dm.command(name="typing")
 @click.argument("conversation_id")
 @structured_output_options
-def dm_typing(conversation_id, as_json, as_yaml):
+def dm_typing(conversation_id, as_json, as_yaml, as_toon):
     """Send typing indicator in a DM conversation."""
     def operation(client: TwitterClient) -> WritePayload:
         client.send_dm_typing_indicator(conversation_id)
@@ -1992,7 +2083,7 @@ def dm_typing(conversation_id, as_json, as_yaml):
 @dm.command(name="rotate-keys")
 @click.argument("conversation_id")
 @structured_output_options
-def dm_rotate_keys(conversation_id, as_json, as_yaml):
+def dm_rotate_keys(conversation_id, as_json, as_yaml, as_toon):
     """Rotate encryption keys for a DM conversation."""
     def operation(client: TwitterClient) -> WritePayload:
         client.rotate_dm_encryption_keys(conversation_id)
@@ -2023,7 +2114,7 @@ def poll(ctx):
 @click.option("--option", "-o", "options", multiple=True, required=True, help="Poll option. Repeat for each option (2-4).")
 @click.option("--duration", "-d", type=int, default=1440, help="Poll duration in minutes (default: 1440 = 24h).")
 @structured_output_options
-def poll_create(question, options, duration, as_json, as_yaml):
+def poll_create(question, options, duration, as_json, as_yaml, as_toon):
     """Create a poll tweet. QUESTION is the poll question."""
     if len(options) < 2 or len(options) > 4:
         raise click.UsageError("Polls must have 2-4 options")
@@ -2046,7 +2137,7 @@ def poll_create(question, options, duration, as_json, as_yaml):
 @click.argument("tweet_id")
 @click.option("--choice", "-c", type=int, required=True, help="Option index to vote for (0-based).")
 @structured_output_options
-def poll_vote(tweet_id, choice, as_json, as_yaml):
+def poll_vote(tweet_id, choice, as_json, as_yaml, as_toon):
     """Vote on a poll. TWEET_ID is the poll tweet ID."""
     tweet_id = _normalize_tweet_id(tweet_id)
 
@@ -2084,9 +2175,9 @@ class ListGroup(click.Group):
         # Try normal resolution first
         try:
             return super().resolve_command(ctx, args)
-        except click.exceptions.NoSuchCommand:
+        except Exception as exc:
             # If first arg is numeric, treat as list ID - invoke the subcommand directly
-            if args and args[0].isdigit():
+            if args and args[0].isdigit() and exc.__class__.__name__ == "NoSuchCommand":
                 from .cli import list_timeline_sub
                 # Invoke the subcommand with the numeric ID as the list_id argument
                 ctx.invoke(list_timeline_sub, list_id=args[0])
@@ -2110,14 +2201,18 @@ def list_cmd(ctx):
 @click.option("--filter", "do_filter", is_flag=True, help="Enable score-based filtering.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def list_timeline_sub(ctx, list_id, max_count, cursor, as_json, as_yaml, do_filter, full_text):
-    # type: (Any, str, Optional[int], Optional[str], bool, bool, bool, bool) -> None
+def list_timeline_sub(ctx, list_id, max_count, cursor, as_json, as_yaml, as_toon, do_filter, full_text):
+    # type: (Any, str, Optional[int], Optional[str], bool, bool, bool, bool, bool) -> None
     """Fetch tweets from a Twitter List. LIST_ID is the numeric list ID."""
     compact = ctx.obj.get("compact", False)
     config = load_config()
     rich_output = use_rich_output(as_json=as_json, as_yaml=as_yaml, compact=compact)
 
+    tweets = []  # type: List[Tweet]
+    next_cursor = None  # type: Optional[str]
+
     def _run():
+        nonlocal tweets, next_cursor
         client = _get_client(config)
         try:
             fetch_count = _resolve_configured_count(config, max_count)
@@ -2136,15 +2231,17 @@ def list_timeline_sub(ctx, list_id, max_count, cursor, as_json, as_yaml, do_filt
         except (TwitterError, RuntimeError) as exc:
             _exit_with_error(exc)
 
+    _run_guarded(_run)
+
     filtered = _apply_filter(tweets, do_filter, config, rich_output=rich_output)
 
     if compact:
-        click.echo(tweets_to_compact_json(filtered))
+        click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
         return
 
     save_tweet_cache(filtered)
 
-    if _emit_timeline_structured(filtered, next_cursor, as_json=as_json, as_yaml=as_yaml):
+    if _emit_timeline_structured(filtered, next_cursor, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
         return
 
     print_tweet_table(
@@ -2156,15 +2253,13 @@ def list_timeline_sub(ctx, list_id, max_count, cursor, as_json, as_yaml, do_filt
     _print_show_hint()
     console.print()
 
-    _run_guarded(_run)
-
 
 @list_cmd.command(name="create")
 @click.argument("name")
 @click.option("--description", "-d", default="", help="List description.")
 @click.option("--private/--public", default=False, help="Make list private (default: public).")
 @structured_output_options
-def list_create(name, description, private, as_json, as_yaml):
+def list_create(name, description, private, as_json, as_yaml, as_toon):
     """Create a new Twitter List."""
     def operation(client: TwitterClient) -> WritePayload:
         list_id = client.create_list(name, description, private)
@@ -2186,7 +2281,7 @@ def list_create(name, description, private, as_json, as_yaml):
 @click.option("--description", "-d", default=None, help="New list description.")
 @click.option("--private/--public", default=None, help="Change privacy.")
 @structured_output_options
-def list_update(list_id, name, description, private, as_json, as_yaml):
+def list_update(list_id, name, description, private, as_json, as_yaml, as_toon):
     """Update an existing Twitter List."""
     if name is None and description is None and private is None:
         raise click.UsageError("At least one of --name, --description, or --private/--public is required")
@@ -2209,7 +2304,7 @@ def list_update(list_id, name, description, private, as_json, as_yaml):
 @click.argument("list_id")
 @click.confirmation_option(prompt="Are you sure you want to delete this list?")
 @structured_output_options
-def list_delete(list_id, as_json, as_yaml):
+def list_delete(list_id, as_json, as_yaml, as_toon):
     """Delete a Twitter List."""
     def operation(client: TwitterClient) -> WritePayload:
         client.delete_list(list_id)
@@ -2229,7 +2324,7 @@ def list_delete(list_id, as_json, as_yaml):
 @click.argument("list_id")
 @click.argument("screen_name")
 @structured_output_options
-def list_add_member(list_id, screen_name, as_json, as_yaml):
+def list_add_member(list_id, screen_name, as_json, as_yaml, as_toon):
     """Add a member to a Twitter List."""
     screen_name = screen_name.lstrip("@")
 
@@ -2252,7 +2347,7 @@ def list_add_member(list_id, screen_name, as_json, as_yaml):
 @click.argument("list_id")
 @click.argument("screen_name")
 @structured_output_options
-def list_remove_member(list_id, screen_name, as_json, as_yaml):
+def list_remove_member(list_id, screen_name, as_json, as_yaml, as_toon):
     """Remove a member from a Twitter List."""
     screen_name = screen_name.lstrip("@")
 
@@ -2276,7 +2371,7 @@ def list_remove_member(list_id, screen_name, as_json, as_yaml):
 @click.option("--max", "-n", "max_count", type=int, default=None, help="Max members to fetch.")
 @structured_output_options
 @click.pass_context
-def list_members(ctx, list_id, max_count, as_json, as_yaml):
+def list_members(ctx, list_id, max_count, as_json, as_yaml, as_toon):
     """List members of a Twitter List."""
     compact = ctx.obj.get("compact", False)
     config = load_config()
@@ -2301,7 +2396,7 @@ def list_members(ctx, list_id, max_count, as_json, as_yaml):
 @click.option("--max", "-n", "max_count", type=int, default=None, help="Max lists to fetch.")
 @structured_output_options
 @click.pass_context
-def list_subscriptions(ctx, max_count, as_json, as_yaml):
+def list_subscriptions(ctx, max_count, as_json, as_yaml, as_toon):
     """List Twitter Lists the authenticated user subscribes to."""
     compact = ctx.obj.get("compact", False)
     config = load_config()
@@ -2332,7 +2427,12 @@ def list_subscriptions(ctx, max_count, as_json, as_yaml):
         table.add_column("Members", justify="right")
         table.add_column("Private", justify="center")
         for lst in lists:
-            table.add_row(lst.id, lst.name, str(lst.member_count), "yes" if lst.private else "no")
+            table.add_row(
+                lst.get("id", ""),
+                lst.get("name", ""),
+                str(lst.get("member_count", 0)),
+                "yes" if lst.get("private", False) else "no"
+            )
         console.print(table)
         console.print()
 
@@ -2344,7 +2444,7 @@ def list_subscriptions(ctx, max_count, as_json, as_yaml):
 @click.option("--type", "notif_type", type=click.Choice(["all", "mentions", "likes", "retweets", "follows", "quotes"]), default="all", help="Filter by notification type.")
 @structured_output_options
 @click.pass_context
-def notifications(ctx, max_count, notif_type, as_json, as_yaml):
+def notifications(ctx, max_count, notif_type, as_json, as_yaml, as_toon):
     """Fetch notifications for the authenticated user."""
     compact = ctx.obj.get("compact", False)
     config = load_config()
@@ -2386,7 +2486,7 @@ def community(ctx):
 @community.command(name="join")
 @click.argument("community_id")
 @structured_output_options
-def community_join(community_id, as_json, as_yaml):
+def community_join(community_id, as_json, as_yaml, as_toon):
     """Join a Community."""
     def operation(client: TwitterClient) -> WritePayload:
         client.join_community(community_id)
@@ -2405,7 +2505,7 @@ def community_join(community_id, as_json, as_yaml):
 @community.command(name="leave")
 @click.argument("community_id")
 @structured_output_options
-def community_leave(community_id, as_json, as_yaml):
+def community_leave(community_id, as_json, as_yaml, as_toon):
     """Leave a Community."""
     def operation(client: TwitterClient) -> WritePayload:
         client.leave_community(community_id)
@@ -2426,7 +2526,7 @@ def community_leave(community_id, as_json, as_yaml):
 @click.option("--max", "-n", "max_count", type=int, default=None, help="Max tweets to fetch.")
 @structured_output_options
 @click.pass_context
-def community_tweets(ctx, community_id, max_count, as_json, as_yaml):
+def community_tweets(ctx, community_id, max_count, as_json, as_yaml, as_toon):
     """Fetch tweets from a Community."""
     compact = ctx.obj.get("compact", False)
     config = load_config()
@@ -2442,10 +2542,10 @@ def community_tweets(ctx, community_id, max_count, as_json, as_yaml):
     filtered = _apply_filter(tweets, False, config, rich_output=rich_output)
 
     if compact:
-        click.echo(tweets_to_compact_json(filtered))
+        click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
         return
 
-    if emit_structured(tweets_to_data(filtered), as_json=as_json, as_yaml=as_yaml):
+    if emit_structured(tweets_to_data(filtered, ctx.obj.get("fields")), as_json=as_json, as_yaml=as_yaml):
         return
 
     save_tweet_cache(filtered)

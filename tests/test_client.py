@@ -11,15 +11,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 from twitter_cli.client import (
-    _best_chrome_target,
     TwitterClient,
+    _best_chrome_target,
 )
 from twitter_cli.exceptions import TwitterAPIError
 from twitter_cli.graphql import (
-    FEATURES,
     FALLBACK_QUERY_IDS,
+    FEATURES,
     _build_graphql_url,
     _update_features_from_html,
 )
@@ -35,7 +34,6 @@ from twitter_cli.parser import (
     parse_tweet_result,
     parse_user_result,
 )
-
 
 # ── _deep_get ────────────────────────────────────────────────────────────
 

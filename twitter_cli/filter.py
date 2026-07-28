@@ -6,9 +6,10 @@ configurable rules (topN, min score, language, etc.).
 
 from __future__ import annotations
 
-from dataclasses import replace
 import math
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import replace
+from typing import Any
 
 from .config import _as_float, _as_int
 from .models import Tweet
@@ -22,7 +23,7 @@ DEFAULT_WEIGHTS = {
 }
 
 
-def score_tweet(tweet: Tweet, weights: Optional[Dict[str, float]] = None) -> float:
+def score_tweet(tweet: Tweet, weights: dict[str, float] | None = None) -> float:
     """Calculate engagement score for a single tweet.
 
     Formula:
@@ -46,7 +47,7 @@ def score_tweet(tweet: Tweet, weights: Optional[Dict[str, float]] = None) -> flo
     )
 
 
-def filter_tweets(tweets: Sequence[Tweet], config: Mapping[str, Any]) -> List[Tweet]:
+def filter_tweets(tweets: Sequence[Tweet], config: Mapping[str, Any]) -> list[Tweet]:
     """Filter and rank tweets according to config.
 
     Config keys:
@@ -87,7 +88,7 @@ def filter_tweets(tweets: Sequence[Tweet], config: Mapping[str, Any]) -> List[Tw
     return scored
 
 
-def _build_weights(raw_weights: Mapping[str, Any]) -> Dict[str, float]:
+def _build_weights(raw_weights: Mapping[str, Any]) -> dict[str, float]:
     """Merge custom weights with defaults and coerce to float."""
     merged = {}
     for key, default_value in DEFAULT_WEIGHTS.items():

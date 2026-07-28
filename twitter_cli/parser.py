@@ -10,7 +10,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Optional, Tuple  # noqa: F401
+    from collections.abc import Callable  # noqa: F401
 
 from .models import Author, Metrics, Tweet, TweetMedia, UserProfile
 

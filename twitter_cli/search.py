@@ -9,20 +9,20 @@ Reference: https://help.x.com/en/using-x/x-advanced-search
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from datetime import date
-from typing import List, Optional, Sequence
 
 _LANG_PATTERN = re.compile(r"^[A-Za-z][A-Za-z-]{1,14}$")
 
 
-def _normalize_handle(value: Optional[str]) -> Optional[str]:
+def _normalize_handle(value: str | None) -> str | None:
     if value is None:
         return None
     text = value.strip().lstrip("@")
     return text or None
 
 
-def _normalize_lang(value: Optional[str]) -> Optional[str]:
+def _normalize_lang(value: str | None) -> str | None:
     if value is None:
         return None
     text = value.strip().lower()
@@ -33,7 +33,7 @@ def _normalize_lang(value: Optional[str]) -> Optional[str]:
     return text
 
 
-def _normalize_date(flag_name: str, value: Optional[str]) -> Optional[str]:
+def _normalize_date(flag_name: str, value: str | None) -> str | None:
     if value is None:
         return None
     text = value.strip()
@@ -49,15 +49,15 @@ def _normalize_date(flag_name: str, value: Optional[str]) -> Optional[str]:
 def build_search_query(
     query: str = "",
     *,
-    from_user: Optional[str] = None,
-    to_user: Optional[str] = None,
-    lang: Optional[str] = None,
-    since: Optional[str] = None,
-    until: Optional[str] = None,
-    has: Optional[Sequence[str]] = None,
-    exclude: Optional[Sequence[str]] = None,
-    min_likes: Optional[int] = None,
-    min_retweets: Optional[int] = None,
+    from_user: str | None = None,
+    to_user: str | None = None,
+    lang: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    has: Sequence[str] | None = None,
+    exclude: Sequence[str] | None = None,
+    min_likes: int | None = None,
+    min_retweets: int | None = None,
 ) -> str:
     """Build an advanced search query string.
 
@@ -78,7 +78,7 @@ def build_search_query(
     Returns:
         Composed query string ready for the rawQuery API parameter.
     """
-    parts: List[str] = []
+    parts: list[str] = []
     query_text = query.strip()
     from_user = _normalize_handle(from_user)
     to_user = _normalize_handle(to_user)

@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import time
 
-
 from twitter_cli.cache import resolve_cached_tweet, save_tweet_cache
 from twitter_cli.models import Author, Metrics, Tweet
 

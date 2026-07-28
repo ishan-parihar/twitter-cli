@@ -110,7 +110,7 @@ _DEFAULT_FEATURES = {
 FEATURES = dict(_DEFAULT_FEATURES)
 
 # Module-level caches (not thread-safe — CLI is single-threaded)
-_cached_query_ids: Dict[str, str] = {}
+_cached_query_ids: dict[str, str] = {}
 _bundles_scanned = False
 
 

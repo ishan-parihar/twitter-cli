@@ -18,12 +18,9 @@ import time
 import urllib.parse
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
 
 import requests
 from requests_oauthlib import OAuth1Session
-
-from .constants import BEARER_TOKEN
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +78,9 @@ class AppOnlyToken:
 @dataclass
 class StoredTokens:
     """All stored token types."""
-    oauth1: Optional[OAuth1Tokens] = None
-    oauth2: Optional[OAuth2Tokens] = None
-    app_only: Optional[AppOnlyToken] = None
+    oauth1: OAuth1Tokens | None = None
+    oauth2: OAuth2Tokens | None = None
+    app_only: AppOnlyToken | None = None
     active_type: str = "cookie"  # cookie, oauth1, oauth2, app_only
 
 
@@ -119,11 +116,11 @@ class OAuthManager:
             tokens = StoredTokens()
             tokens.active_type = data.get("active_type", "cookie")
 
-            if "oauth1" in data and data["oauth1"]:
+            if data.get("oauth1"):
                 tokens.oauth1 = OAuth1Tokens(**data["oauth1"])
-            if "oauth2" in data and data["oauth2"]:
+            if data.get("oauth2"):
                 tokens.oauth2 = OAuth2Tokens(**data["oauth2"])
-            if "app_only" in data and data["app_only"]:
+            if data.get("app_only"):
                 tokens.app_only = AppOnlyToken(**data["app_only"])
 
             return tokens
@@ -135,7 +132,7 @@ class OAuthManager:
         """Save tokens to file."""
         data = {
             "active_type": tokens.active_type,
-        }
+        }  # type: Dict[str, Any]
         if tokens.oauth1:
             data["oauth1"] = asdict(tokens.oauth1)
         if tokens.oauth2:
@@ -150,7 +147,7 @@ class OAuthManager:
 
     # ── OAuth 1.0a Flow ──────────────────────────────────────────────────
 
-    def oauth1_get_request_token(self) -> Tuple[str, str]:
+    def oauth1_get_request_token(self) -> tuple[str, str]:
         """Get OAuth1 request token. Returns (oauth_token, oauth_token_secret)."""
         if not self.oauth1_consumer_key or not self.oauth1_consumer_secret:
             raise ValueError("OAuth1 consumer key/secret not configured. Set TWITTER_OAUTH1_CONSUMER_KEY and TWITTER_OAUTH1_CONSUMER_SECRET")
@@ -201,7 +198,7 @@ class OAuthManager:
 
         # Step 2: Show authorization URL
         auth_url = self.oauth1_get_authorize_url(oauth_token)
-        print(f"\n2. Visit this URL to authorize:")
+        print("\n2. Visit this URL to authorize:")
         print(f"   {auth_url}")
         print("\n   After authorizing, you'll be redirected to a URL like:")
         print(f"   {self.redirect_uri}?oauth_token=...&oauth_verifier=...")
@@ -217,7 +214,7 @@ class OAuthManager:
         print("\n4. Exchanging for access token...")
         tokens = self.oauth1_get_access_token(oauth_token, oauth_token_secret, oauth_verifier)
 
-        print(f"\n✅ OAuth1 authentication successful!")
+        print("\n✅ OAuth1 authentication successful!")
         print(f"   User: @{tokens.screen_name}")
         print(f"   User ID: {tokens.user_id}")
 
@@ -225,11 +222,11 @@ class OAuthManager:
 
     # ── OAuth 2.0 with PKCE Flow ─────────────────────────────────────────
 
-    def _generate_pkce_pair(self) -> Tuple[str, str]:
+    def _generate_pkce_pair(self) -> tuple[str, str]:
         """Generate PKCE code verifier and challenge."""
         code_verifier = secrets.token_urlsafe(32)
-        import hashlib
         import base64
+        import hashlib
         code_challenge = base64.urlsafe_b64encode(
             hashlib.sha256(code_verifier.encode()).digest()
         ).decode().rstrip("=")
@@ -332,7 +329,7 @@ class OAuthManager:
         print("\n2. Getting authorization URL...")
         state = secrets.token_urlsafe(16)
         auth_url = self.oauth2_get_authorize_url(code_challenge, scope, state)
-        print(f"\n   Visit this URL to authorize:")
+        print("\n   Visit this URL to authorize:")
         print(f"   {auth_url}")
         print(f"\n   State parameter: {state}")
         print("\n   After authorizing, you'll be redirected to a URL like:")
@@ -349,7 +346,7 @@ class OAuthManager:
         print("\n4. Exchanging code for tokens...")
         tokens = self.oauth2_exchange_code(auth_code, code_verifier)
 
-        print(f"\n✅ OAuth2 authentication successful!")
+        print("\n✅ OAuth2 authentication successful!")
         print(f"   Scope: {tokens.scope}")
         print(f"   Expires in: {tokens.expires_in}s")
 
@@ -387,7 +384,7 @@ class OAuthManager:
 
         tokens = self.app_only_get_token()
 
-        print(f"\n✅ App-only authentication successful!")
+        print("\n✅ App-only authentication successful!")
         print(f"   Token type: {tokens.token_type}")
         print(f"   Expires in: {tokens.expires_in}s")
 

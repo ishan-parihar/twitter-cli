@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from twitter_cli.serialization import tweet_from_dict, tweet_to_dict, tweets_from_json, tweets_to_json
+from twitter_cli.serialization import (
+    tweet_from_dict,
+    tweet_to_dict,
+    tweets_from_json,
+    tweets_to_json,
+)
 
 
 def test_tweet_roundtrip_dict(tweet_factory) -> None:
@@ -38,8 +43,9 @@ def test_tweets_from_json_accepts_structured_success_envelope(tweet_factory) -> 
 
 
 def test_compact_serialization(tweet_factory) -> None:
-    from twitter_cli.serialization import tweet_to_compact_dict, tweets_to_compact_json
     import json
+
+    from twitter_cli.serialization import tweet_to_compact_dict, tweets_to_compact_json
 
     tweet = tweet_factory(
         "42",

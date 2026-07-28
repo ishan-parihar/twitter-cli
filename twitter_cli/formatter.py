@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from typing import List, Optional
 
 from rich.console import Console
 from rich.markdown import Markdown
@@ -20,10 +19,11 @@ def _make_console() -> Console:
     On Windows, rich may use WriteConsoleW API directly instead of writing
     to stdout, making output invisible to pipe/subprocess capture.
     Using force_terminal=False in non-TTY contexts prevents this.
+    Output goes to stderr to avoid polluting structured stdout output.
     """
-    if sys.platform == "win32" and not sys.stdout.isatty():
-        return Console(force_terminal=False)
-    return Console()
+    if sys.platform == "win32" and not sys.stderr.isatty():
+        return Console(stderr=True, force_terminal=False)
+    return Console(stderr=True)
 
 
 def format_number(n: int) -> str:
@@ -36,9 +36,9 @@ def format_number(n: int) -> str:
 
 
 def print_tweet_table(
-    tweets: List[Tweet],
-    console: Optional[Console] = None,
-    title: Optional[str] = None,
+    tweets: list[Tweet],
+    console: Console | None = None,
+    title: str | None = None,
     full_text: bool = False,
 ) -> None:
     """Print tweets as a rich table."""
@@ -111,7 +111,7 @@ def print_tweet_table(
     console.print(table)
 
 
-def print_tweet_detail(tweet: Tweet, console: Optional[Console] = None) -> None:
+def print_tweet_detail(tweet: Tweet, console: Console | None = None) -> None:
     """Print a single tweet in detail using a rich panel."""
     if console is None:
         console = _make_console()
@@ -191,7 +191,7 @@ def article_to_markdown(tweet: Tweet) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def print_article(tweet: Tweet, console: Optional[Console] = None) -> None:
+def print_article(tweet: Tweet, console: Console | None = None) -> None:
     """Print a Twitter Article with rich formatting."""
     if console is None:
         console = _make_console()
@@ -226,8 +226,8 @@ def print_article(tweet: Tweet, console: Optional[Console] = None) -> None:
 
 def print_filter_stats(
     original_count: int,
-    filtered: List[Tweet],
-    console: Optional[Console] = None,
+    filtered: list[Tweet],
+    console: Console | None = None,
 ) -> None:
     """Print filter statistics."""
     if console is None:
@@ -244,7 +244,7 @@ def print_filter_stats(
         )
 
 
-def print_user_profile(user: UserProfile, console: Optional[Console] = None) -> None:
+def print_user_profile(user: UserProfile, console: Console | None = None) -> None:
     """Print user profile as a rich panel."""
     if console is None:
         console = _make_console()
@@ -287,9 +287,9 @@ def print_user_profile(user: UserProfile, console: Optional[Console] = None) -> 
 
 
 def print_user_table(
-    users: List[UserProfile],
-    console: Optional[Console] = None,
-    title: Optional[str] = None,
+    users: list[UserProfile],
+    console: Console | None = None,
+    title: str | None = None,
 ) -> None:
     """Print a list of users as a rich table."""
     if console is None:
