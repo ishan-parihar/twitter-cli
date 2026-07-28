@@ -431,6 +431,8 @@ def _inherit_flag(ctx, name, value):
 )
 @click.option("--max", "-n", "max_count", type=int, default=None, help="Max number of tweets to fetch.")
 @click.option("--cursor", type=str, default=None, help="Pagination cursor for continuing a previous feed request.")
+@click.option("--format", "output_format", type=click.Choice(["table", "json", "yaml", "toon"]), default=None, help="Output format (overrides global --format).")
+@click.option("--fields", type=str, default=None, help="Comma-separated list of fields to include (overrides global --fields).")
 @structured_output_options
 @click.option("--input", "-i", "input_file", type=str, default=None, help="Load tweets from JSON file.")
 @click.option("--output", "-o", "output_file", type=str, default=None, help="Save filtered tweets to JSON file.")
@@ -442,7 +444,7 @@ def _inherit_flag(ctx, name, value):
     help="Include promoted tweets when the timeline endpoint exposes them.",
 )
 @click.pass_context
-def feed_cmd(ctx, feed_type, max_count, cursor, as_json, as_yaml, as_toon, input_file, output_file, do_filter, full_text, include_promoted):
+def feed_cmd(ctx, feed_type, max_count, cursor, as_json, as_yaml, as_toon, output_format, fields, input_file, output_file, do_filter, full_text, include_promoted):
     # type: (Any, str, Optional[int], Optional[str], bool, bool, bool, Optional[str], Optional[str], bool, bool, bool) -> None
     """Fetch home timeline with optional filtering."""
     compact = ctx.obj.get("compact", False)
