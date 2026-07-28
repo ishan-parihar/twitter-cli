@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 80" width="1200" height="80" role="img" aria-label="Development section header">
+  <defs>
+    <linearGradient id="devGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b949e"/>
+      <stop offset="100%" stop-color="#c9d1d9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="80" fill="#0d1117"/>
+  <rect x="40" y="20" width="60" height="4" rx="2" fill="url(#devGrad)"/>
+  <text x="40" y="58" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="24" font-weight="600" fill="#e6edf3">Development</text>
+  <text x="220" y="58" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="16" fill="#8b949e">Contributing • Testing • Architecture</text>
+</svg>

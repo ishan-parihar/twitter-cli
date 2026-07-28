@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 80" width="1200" height="80" role="img" aria-label="Quick start section header">
+  <defs>
+    <linearGradient id="qsGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a371f7"/>
+      <stop offset="100%" stop-color="#d2a8ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="80" fill="#0d1117"/>
+  <rect x="40" y="20" width="60" height="4" rx="2" fill="url(#qsGrad)"/>
+  <text x="40" y="58" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="24" font-weight="600" fill="#e6edf3">Quick Start</text>
+  <text x="220" y="58" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="16" fill="#8b949e">First command in 10 seconds</text>
+</svg>
