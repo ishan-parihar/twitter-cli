@@ -141,7 +141,7 @@ def test_cli_list_accepts_cursor_and_emits_pagination(monkeypatch, tweet_factory
     )
     runner = CliRunner()
 
-    result = runner.invoke(cli, ["list", "123", "--cursor", "cursor-prev", "--json"])
+    result = runner.invoke(cli, ["list-timeline", "123", "--cursor", "cursor-prev", "--json"])
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
@@ -179,7 +179,7 @@ def test_print_tweet_table_full_text_shows_untruncated_text(tweet_factory) -> No
         ["search", "x"],
         ["user-posts", "alice"],
         ["likes", "alice"],
-        ["list", "123"],
+        ["list-timeline", "123"],
     ],
 )
 def test_cli_commands_wrap_client_creation_errors(monkeypatch, args) -> None:

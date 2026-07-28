@@ -1,6 +1,6 @@
 """Data models for twitter-cli.
 
-Defines Tweet, Author, Metrics, and TweetMedia as simple dataclasses.
+Defines Tweet, Author, Metrics, TweetMedia, and new models for DMs, Lists, Polls, Communities.
 """
 
 from __future__ import annotations
@@ -76,4 +76,69 @@ class UserProfile:
     likes_count: int = 0
     verified: bool = False
     profile_image_url: str = ""
+    created_at: str = ""
+
+
+@dataclass
+class DMParticipant:
+    id: str
+    name: str
+    screen_name: str
+    profile_image_url: str = ""
+
+
+@dataclass
+class DMMessage:
+    id: str
+    conversation_id: str
+    sender_id: str
+    sender_screen_name: str
+    text: str
+    created_at: str
+    media: List[TweetMedia] = field(default_factory=list)
+
+
+@dataclass
+class DMConversation:
+    id: str
+    participants: List[DMParticipant] = field(default_factory=list)
+    last_message: Optional[DMMessage] = None
+    updated_at: str = ""
+
+
+@dataclass
+class TwitterList:
+    id: str
+    name: str
+    description: str = ""
+    private: bool = False
+    member_count: int = 0
+    subscriber_count: int = 0
+    owner: Optional[UserProfile] = None
+    created_at: str = ""
+
+
+@dataclass
+class PollOption:
+    position: int
+    text: str
+    count: int = 0
+
+
+@dataclass
+class Poll:
+    options: List[PollOption] = field(default_factory=list)
+    duration_minutes: int = 0
+    end_datetime: str = ""
+    voting_status: str = ""  # "open" | "closed"
+
+
+@dataclass
+class Community:
+    id: str
+    name: str
+    description: str = ""
+    member_count: int = 0
+    private: bool = False
+    owner_id: str = ""
     created_at: str = ""

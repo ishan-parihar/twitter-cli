@@ -11,7 +11,7 @@ import os
 import random
 import time
 import urllib.parse
-from typing import TYPE_CHECKING, Any, Callable, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 import bs4
 from curl_cffi import requests as _cffi_requests
@@ -470,9 +470,25 @@ class TwitterClient:
 
     # ── Write operations ─────────────────────────────────────────────
 
-    # Supported image MIME types and max file size (5 MB)
+    # Supported MIME types and max file sizes
     _SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+    _SUPPORTED_VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-matroska", "video/webm"}
+    _ALL_SUPPORTED_TYPES = _SUPPORTED_IMAGE_TYPES | _SUPPORTED_VIDEO_TYPES
     _MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+    _MAX_VIDEO_SIZE = 512 * 1024 * 1024  # 512 MB (Twitter limit)
+    _CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB chunks for video upload
+
+    # Media categories mapping
+    _MEDIA_CATEGORY_MAP = {
+        "image/jpeg": "tweet_image",
+        "image/png": "tweet_image",
+        "image/gif": "tweet_gif",
+        "image/webp": "tweet_image",
+        "video/mp4": "tweet_video",
+        "video/quicktime": "tweet_video",
+        "video/x-matroska": "tweet_video",
+        "video/webm": "tweet_video",
+    }
 
     def _write_delay(self):
         # type: () -> None
@@ -481,28 +497,45 @@ class TwitterClient:
         logger.debug("Write operation delay: %.1fs", delay)
         time.sleep(delay)
 
-    def upload_media(self, file_path):
-        # type: (str) -> str
-        """Upload an image file to Twitter.  Returns the media_id string.
+    def upload_media(self, file_path, media_category=None):
+        # type: (str, Optional[str]) -> str
+        """Upload a media file (image, video, or GIF) to Twitter.
 
-        Uses Twitter's chunked upload API (INIT → APPEND → FINALIZE).
-        Supports JPEG, PNG, GIF, and WebP images up to 5 MB.
+        Returns the media_id string.
+
+        Uses Twitter's chunked upload API (INIT → APPEND[...] → FINALIZE → STATUS).
+        Supports:
+          - Images (JPEG, PNG, GIF, WebP) up to 5 MB
+          - Videos (MP4, MOV, MKV, WebM) up to 512 MB
+          - Animated GIFs up to 5 MB
+
+        For videos, automatically handles chunked upload and waits for
+        processing to complete before returning.
         """
         if not os.path.isfile(file_path):
             raise MediaUploadError("File not found: %s" % file_path)
 
         file_size = os.path.getsize(file_path)
-        if file_size > self._MAX_IMAGE_SIZE:
+        media_type = mimetypes.guess_type(file_path)[0] or ""
+
+        # Determine if video
+        is_video = media_type in self._SUPPORTED_VIDEO_TYPES
+        max_size = self._MAX_VIDEO_SIZE if is_video else self._MAX_IMAGE_SIZE
+        if file_size > max_size:
             raise MediaUploadError(
-                "File too large: %.1f MB (max %.0f MB)"
-                % (file_size / (1024 * 1024), self._MAX_IMAGE_SIZE / (1024 * 1024))
+                "File too large: %.1f MB (max %.0f MB for %s)"
+                % (file_size / (1024 * 1024), max_size / (1024 * 1024), "video" if is_video else "image")
             )
 
-        media_type = mimetypes.guess_type(file_path)[0] or ""
-        if media_type not in self._SUPPORTED_IMAGE_TYPES:
+        if media_type not in self._ALL_SUPPORTED_TYPES:
+            supported = ", ".join(sorted(self._ALL_SUPPORTED_TYPES))
             raise MediaUploadError(
-                "Unsupported image format: %s (supported: jpeg, png, gif, webp)" % media_type
+                "Unsupported image format: %s (supported: %s)" % (media_type, supported)
             )
+
+        # Determine media category
+        if media_category is None:
+            media_category = self._MEDIA_CATEGORY_MAP.get(media_type, "tweet_image")
 
         upload_url = "https://upload.twitter.com/i/media/upload.json"
         session = _get_cffi_session()
@@ -514,6 +547,7 @@ class TwitterClient:
             "command": "INIT",
             "total_bytes": str(file_size),
             "media_type": media_type,
+            "media_category": media_category,
         }
         resp = session.post(upload_url, headers=headers, data=init_data, timeout=30)
         if resp.status_code >= 400:
@@ -525,25 +559,54 @@ class TwitterClient:
         media_id = init_result.get("media_id_string", "")
         if not media_id:
             raise MediaUploadError("INIT did not return media_id")
-        logger.info("Media INIT: media_id=%s", media_id)
+        logger.info("Media INIT: media_id=%s, category=%s", media_id, media_category)
 
-        # ── APPEND ───────────────────────────────────────────────────
-        with open(file_path, "rb") as f:
-            media_data = base64.b64encode(f.read()).decode("ascii")
-
+        # ── APPEND (chunked for video, single for image) ─────────────
         headers = self._build_headers(url=upload_url, method="POST")
-        # Remove JSON content-type — curl_cffi handles multipart encoding
         headers.pop("Content-Type", None)
-        append_data = {
-            "command": "APPEND",
-            "media_id": media_id,
-            "segment_index": "0",
-            "media_data": media_data,
-        }
-        resp = session.post(upload_url, headers=headers, data=append_data, timeout=60)
-        if resp.status_code >= 400:
-            raise MediaUploadError("APPEND failed (HTTP %d): %s" % (resp.status_code, resp.text[:300]))
-        logger.info("Media APPEND: segment 0 uploaded")
+
+        if is_video:
+            # Chunked upload for videos
+            segment_index = 0
+            bytes_uploaded = 0
+            with open(file_path, "rb") as f:
+                while True:
+                    chunk = f.read(self._CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    append_data = {
+                        "command": "APPEND",
+                        "media_id": media_id,
+                        "segment_index": str(segment_index),
+                        "media_data": base64.b64encode(chunk).decode("ascii"),
+                    }
+                    resp = session.post(upload_url, headers=headers, data=append_data, timeout=120)
+                    if resp.status_code >= 400:
+                        raise MediaUploadError(
+                            "APPEND segment %d failed (HTTP %d): %s"
+                            % (segment_index, resp.status_code, resp.text[:300])
+                        )
+                    bytes_uploaded += len(chunk)
+                    segment_index += 1
+                    logger.info(
+                        "Media APPEND: segment %d uploaded (%d/%d bytes, %.1f%%)",
+                        segment_index - 1, bytes_uploaded, file_size,
+                        bytes_uploaded / file_size * 100
+                    )
+        else:
+            # Single APPEND for images/GIFs
+            with open(file_path, "rb") as f:
+                media_data = base64.b64encode(f.read()).decode("ascii")
+            append_data = {
+                "command": "APPEND",
+                "media_id": media_id,
+                "segment_index": "0",
+                "media_data": media_data,
+            }
+            resp = session.post(upload_url, headers=headers, data=append_data, timeout=60)
+            if resp.status_code >= 400:
+                raise MediaUploadError("APPEND failed (HTTP %d): %s" % (resp.status_code, resp.text[:300]))
+            logger.info("Media APPEND: segment 0 uploaded")
 
         # ── FINALIZE ─────────────────────────────────────────────────
         headers = self._build_headers(url=upload_url, method="POST")
@@ -556,6 +619,62 @@ class TwitterClient:
         if resp.status_code >= 400:
             raise MediaUploadError("FINALIZE failed (HTTP %d): %s" % (resp.status_code, resp.text[:300]))
         logger.info("Media FINALIZE: media_id=%s ready", media_id)
+
+        # ── STATUS / Wait for processing (video only) ───────────────
+        if is_video:
+            media_id = self._wait_for_media_processing(media_id, session, upload_url)
+
+        return media_id
+
+
+    def _wait_for_media_processing(self, media_id, session, upload_url):
+        # type: (str, Any, str) -> str
+        """Poll media STATUS until video processing completes."""
+        headers = self._build_headers(url=upload_url, method="GET")
+        max_wait = 300  # 5 minutes max
+        wait_time = 0
+        while wait_time < max_wait:
+            params = {
+                "command": "STATUS",
+                "media_id": media_id,
+            }
+            resp = session.get(upload_url, headers=headers, params=params, timeout=30)
+            if resp.status_code >= 400:
+                logger.warning("Media STATUS check failed: HTTP %d", resp.status_code)
+                break
+            try:
+                status = json.loads(resp.text)
+            except (json.JSONDecodeError, ValueError):
+                logger.warning("Media STATUS returned invalid JSON")
+                break
+
+            processing = status.get("processing_info")
+            if not processing:
+                # No processing info = done (or not a video)
+                logger.info("Media processing complete (no processing_info)")
+                break
+
+            state = processing.get("state", "")
+            progress = processing.get("progress_percent", 0)
+            check_after = processing.get("check_after_secs", 5)
+
+            logger.info("Media processing: state=%s, progress=%d%%", state, progress)
+
+            if state == "succeeded":
+                logger.info("Media processing succeeded")
+                break
+            if state == "failed":
+                error = processing.get("error", {})
+                raise MediaUploadError(
+                    "Media processing failed: %s (code %s)"
+                    % (error.get("message", "Unknown error"), error.get("code", "N/A"))
+                )
+
+            # Wait before next check
+            sleep_time = max(check_after, 5)
+            logger.debug("Waiting %ds before next STATUS check", sleep_time)
+            time.sleep(sleep_time)
+            wait_time += sleep_time
 
         return media_id
 
@@ -744,6 +863,545 @@ class TwitterClient:
         response = session.post(url, headers=headers, data=body, timeout=30)
         if response.status_code >= 400:
             raise TwitterAPIError(response.status_code, "Failed to unfollow user")
+        self._write_delay()
+        return True
+
+    # ── Direct Messages (DMs) ────────────────────────────────────────
+
+    def create_dm_conversation(self, participant_ids):
+        # type: (List[str]) -> str
+        """Create a DM conversation with one or more participants.
+
+        Returns the conversation ID.
+        """
+        variables = {
+            "participant_ids": participant_ids,
+        }
+        data = self._graphql_post("CreateDMConversation", variables, FEATURES)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_dm_conversation", "conversation_id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to create DM conversation")
+
+    def send_dm(self, conversation_id, text, media_ids=None):
+        # type: (str, str, Optional[List[str]]) -> str
+        """Send a direct message to a conversation.
+
+        Returns the message ID.
+        """
+        media_entities = []
+        if media_ids:
+            media_entities = [{"media_id": mid, "tagged_users": []} for mid in media_ids]
+        variables = {
+            "conversation_id": conversation_id,
+            "text": text,
+            "media_entities": media_entities,
+        }
+        data = self._graphql_post("SendDM", variables, FEATURES)
+        self._write_delay()
+        result = _deep_get(data, "data", "send_dm", "message_id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to send DM")
+
+    def get_dm_conversations(self, count=50):
+        # type: (int) -> List[Dict[str, Any]]
+        """Fetch DM conversations for the authenticated user."""
+        variables = {"count": min(count, 100)}
+        data = self._graphql_get("GetDMConversations", variables, FEATURES)
+        return _deep_get(data, "data", "dm_conversations", "conversations", default=[])
+
+    def get_dm_messages(self, conversation_id, count=50, cursor=None):
+        # type: (str, int, Optional[str]) -> List[Dict[str, Any]]
+        """Fetch messages from a DM conversation."""
+        variables = {"conversation_id": conversation_id, "count": min(count, 100)}
+        if cursor:
+            variables["cursor"] = cursor
+        data = self._graphql_get("GetDMMessages", variables, FEATURES)
+        messages = _deep_get(data, "data", "dm_conversation_messages", "messages", default=[])
+        next_cursor = _deep_get(data, "data", "dm_conversation_messages", "next_cursor")
+        return messages, next_cursor
+
+    # ── Block / Unblock ──────────────────────────────────────────────
+
+    def block_user(self, user_id):
+        # type: (str) -> bool
+        """Block a user by user ID.  Returns True on success."""
+        self._graphql_post("BlockUser", {"user_id": user_id})
+        self._write_delay()
+        return True
+
+    def unblock_user(self, user_id):
+        # type: (str) -> bool
+        """Unblock a user by user ID.  Returns True on success."""
+        self._graphql_post("UnblockUser", {"user_id": user_id})
+        self._write_delay()
+        return True
+
+    # ── Mute / Unmute ────────────────────────────────────────────────
+
+    def mute_user(self, user_id):
+        # type: (str) -> bool
+        """Mute a user by user ID.  Returns True on success."""
+        self._graphql_post("MuteUser", {"user_id": user_id})
+        self._write_delay()
+        return True
+
+    def unmute_user(self, user_id):
+        # type: (str) -> bool
+        """Unmute a user by user ID.  Returns True on success."""
+        self._graphql_post("UnmuteUser", {"user_id": user_id})
+        self._write_delay()
+        return True
+
+    # ── Polls ────────────────────────────────────────────────────────
+
+    def create_poll(self, text, options, duration_minutes=1440, media_ids=None):
+        # type: (str, List[str], int, Optional[List[str]]) -> str
+        """Create a tweet with a poll.
+
+        Args:
+            text: Tweet text content.
+            options: List of poll options (2-4 strings, max 25 chars each).
+            duration_minutes: Poll duration in minutes (5-10080, default 1440 = 24h).
+            media_ids: Optional list of media IDs to attach.
+        Returns the new tweet ID.
+        """
+        if not 2 <= len(options) <= 4:
+            raise ValueError("Poll must have 2-4 options")
+        for opt in options:
+            if len(opt) > 25:
+                raise ValueError("Poll option exceeds 25 characters: %s" % opt)
+        if not 5 <= duration_minutes <= 10080:
+            raise ValueError("Poll duration must be 5-10080 minutes")
+
+        media_entities = []
+        if media_ids:
+            media_entities = [{"media_id": mid, "tagged_users": []} for mid in media_ids]
+        variables = {
+            "tweet_text": text,
+            "poll": {
+                "options": options,
+                "duration_minutes": duration_minutes,
+            },
+            "media": {"media_entities": media_entities, "possibly_sensitive": False},
+            "semantic_annotation_ids": [],
+            "dark_request": False,
+        }
+        data = self._graphql_post("CreatePoll", variables, FEATURES)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_tweet", "tweet_results", "result")
+        if result:
+            return result.get("rest_id", "")
+        raise TwitterAPIError(0, "Failed to create poll")
+
+    def vote_poll(self, tweet_id, choice_index):
+        # type: (str, int) -> bool
+        """Vote on a poll tweet.
+
+        Args:
+            tweet_id: The tweet ID containing the poll.
+            choice_index: 0-based index of the choice to vote for.
+        Returns True on success.
+        """
+        self._graphql_post("VotePoll", {"tweet_id": tweet_id, "choice_index": choice_index})
+        self._write_delay()
+        return True
+
+    # ── Lists ────────────────────────────────────────────────────────
+
+    def create_list(self, name, description="", private=False):
+        # type: (str, str, bool) -> str
+        """Create a new Twitter List.
+
+        Returns the list ID.
+        """
+        variables = {
+            "name": name,
+            "description": description,
+            "private": private,
+        }
+        data = self._graphql_post("CreateList", variables, FEATURES)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_list", "list", "rest_id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to create list")
+
+    def update_list(self, list_id, name=None, description=None, private=None):
+        # type: (str, Optional[str], Optional[str], Optional[bool]) -> bool
+        """Update a Twitter List.
+
+        Only provided fields are updated.
+        """
+        variables = {"list_id": list_id}
+        if name is not None:
+            variables["name"] = name
+        if description is not None:
+            variables["description"] = description
+        if private is not None:
+            variables["private"] = private
+        self._graphql_post("UpdateList", variables, FEATURES)
+        self._write_delay()
+        return True
+
+    def delete_list(self, list_id):
+        # type: (str) -> bool
+        """Delete a Twitter List. Returns True on success."""
+        self._graphql_post("DeleteList", {"list_id": list_id})
+        self._write_delay()
+        return True
+
+    def add_list_member(self, list_id, user_id):
+        # type: (str, str) -> bool
+        """Add a user to a Twitter List. Returns True on success."""
+        self._graphql_post("AddListMember", {"list_id": list_id, "user_id": user_id})
+        self._write_delay()
+        return True
+
+    def remove_list_member(self, list_id, user_id):
+        # type: (str, str) -> bool
+        """Remove a user from a Twitter List. Returns True on success."""
+        self._graphql_post("RemoveListMember", {"list_id": list_id, "user_id": user_id})
+        self._write_delay()
+        return True
+
+    def get_list_members(self, list_id, count=100):
+        # type: (str, int) -> List[UserProfile]
+        """Fetch members of a Twitter List."""
+        return self._fetch_user_list(
+            "GetListMembers", list_id, count,
+            lambda data: _deep_get(data, "data", "list", "members_timeline", "timeline", "instructions"),
+            use_post=True,
+        )
+
+    def get_list_subscriptions(self, user_id, count=100):
+        # type: (str, int) -> List[Dict[str, Any]]
+        """Fetch lists a user subscribes to (follows)."""
+        variables = {"userId": user_id, "count": min(count, 100)}
+        data = self._graphql_get("GetListSubscriptions", variables, FEATURES)
+        return _deep_get(data, "data", "user", "result", "list_subscriptions", "items", default=[])
+
+    # ── Notifications ────────────────────────────────────────────────
+
+    def get_notifications(self, count=50, cursor=None):
+        # type: (int, Optional[str]) -> List[Dict[str, Any]]
+        """Fetch notifications for the authenticated user."""
+        variables = {"count": min(count, 100)}
+        if cursor:
+            variables["cursor"] = cursor
+        data = self._graphql_get("GetNotifications", variables, FEATURES)
+        notifications = _deep_get(data, "data", "notifications", "timeline", "instructions", default=[])
+        # Parse notification entries
+        results = []
+        for instr in notifications:
+            for entry in instr.get("entries", []):
+                content = entry.get("content", {})
+                if content.get("entryType") == "TimelineTimelineItem":
+                    item = content.get("itemContent", {})
+                    tweet_result = _deep_get(item, "tweet_results", "result")
+                    if tweet_result:
+                        results.append(tweet_result)
+        next_cursor = _deep_get(data, "data", "notifications", "next_cursor")
+        return results, next_cursor
+
+    # ── Communities ──────────────────────────────────────────────────
+
+    def get_community_tweets(self, community_id, count=50, cursor=None):
+        # type: (str, int, Optional[str]) -> List[Tweet]
+        """Fetch tweets from a Twitter Community."""
+        return self._fetch_timeline(
+            "GetCommunityTweets",
+            count,
+            lambda data: _deep_get(data, "data", "community_tweets_timeline", "timeline", "instructions"),
+            extra_variables={"community_id": community_id},
+            override_base_variables=True,
+            start_cursor=cursor,
+            return_cursor=True,
+        )
+
+    def join_community(self, community_id):
+        # type: (str) -> bool
+        """Join a Twitter Community. Returns True on success."""
+        self._graphql_post("JoinCommunity", {"community_id": community_id})
+        self._write_delay()
+        return True
+
+    def leave_community(self, community_id):
+        # type: (str) -> bool
+        """Leave a Twitter Community. Returns True on success."""
+        self._graphql_post("LeaveCommunity", {"community_id": community_id})
+        self._write_delay()
+        return True
+
+    # ── Direct Messages ──────────────────────────────────────────────
+
+    def create_dm_conversation(self, participant_ids):
+        # type: (List[str]) -> str
+        """Create a new DM conversation with participants.
+
+        Args:
+            participant_ids: List of user IDs to include in the conversation.
+        Returns:
+            Conversation ID.
+        """
+        variables = {"participant_ids": participant_ids}
+        data = self._graphql_post("CreateDMConversation", variables)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_dm_conversation", "conversation_id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to create DM conversation")
+
+    def send_dm(self, conversation_id, text, media_ids=None):
+        # type: (str, str, Optional[List[str]]) -> str
+        """Send a direct message in a conversation.
+
+        Args:
+            conversation_id: The conversation ID.
+            text: Message text.
+            media_ids: Optional list of media IDs to attach.
+        Returns:
+            Message ID.
+        """
+        media_entities = []
+        if media_ids:
+            media_entities = [{"media_id": mid, "tagged_users": []} for mid in media_ids]
+        variables = {
+            "conversation_id": conversation_id,
+            "text": text,
+            "media": {"media_entities": media_entities, "possibly_sensitive": False},
+        }
+        data = self._graphql_post("SendDM", variables)
+        self._write_delay()
+        result = _deep_get(data, "data", "send_dm", "message_id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to send DM")
+
+    def fetch_dm_conversations(self, count=20):
+        # type: (int) -> List[Dict[str, Any]]
+        """Fetch DM conversations for the authenticated user."""
+        variables = {"count": min(count, 50)}
+        data = self._graphql_get("GetDMConversations", variables, FEATURES)
+        conversations = _deep_get(data, "data", "dm_conversations", "conversations")
+        return conversations or []
+
+    def fetch_dm_messages(self, conversation_id, count=50):
+        # type: (str, int) -> List[Dict[str, Any]]
+        """Fetch messages from a DM conversation."""
+        variables = {"conversation_id": conversation_id, "count": min(count, 100)}
+        data = self._graphql_get("GetDMMessages", variables, FEATURES)
+        messages = _deep_get(data, "data", "dm_conversation", "messages")
+        return messages or []
+
+    # ── Block / Unblock ──────────────────────────────────────────────
+
+    def block_user(self, user_id):
+        # type: (str) -> bool
+        """Block a user by user ID. Returns True on success."""
+        variables = {"user_id": user_id}
+        self._graphql_post("BlockUser", variables)
+        self._write_delay()
+        return True
+
+    def unblock_user(self, user_id):
+        # type: (str) -> bool
+        """Unblock a user by user ID. Returns True on success."""
+        variables = {"user_id": user_id}
+        self._graphql_post("UnblockUser", variables)
+        self._write_delay()
+        return True
+
+    # ── Mute / Unmute ────────────────────────────────────────────────
+
+    def mute_user(self, user_id):
+        # type: (str) -> bool
+        """Mute a user by user ID. Returns True on success."""
+        variables = {"user_id": user_id}
+        self._graphql_post("MuteUser", variables)
+        self._write_delay()
+        return True
+
+    def unmute_user(self, user_id):
+        # type: (str) -> bool
+        """Unmute a user by user ID. Returns True on success."""
+        variables = {"user_id": user_id}
+        self._graphql_post("UnmuteUser", variables)
+        self._write_delay()
+        return True
+
+    # ── Polls ────────────────────────────────────────────────────────
+
+    def create_poll(self, text, options, duration_minutes=1440):
+        # type: (str, List[str], int) -> str
+        """Create a poll tweet.
+
+        Args:
+            text: Tweet text (the question).
+            options: List of 2-4 poll options.
+            duration_minutes: Poll duration in minutes (5-10080, default 1440 = 24h).
+        Returns:
+            Tweet ID of the created poll.
+        """
+        if len(options) < 2 or len(options) > 4:
+            raise ValueError("Poll must have 2-4 options")
+        variables = {
+            "tweet_text": text,
+            "poll": {"options": options, "duration_minutes": duration_minutes},
+            "semantic_annotation_ids": [],
+            "dark_request": False,
+        }
+        data = self._graphql_post("CreatePoll", variables, FEATURES)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_tweet", "tweet_results", "result")
+        if result:
+            return result.get("rest_id", "")
+        raise TwitterAPIError(0, "Failed to create poll")
+
+    def vote_poll(self, tweet_id, option_index):
+        # type: (str, int) -> bool
+        """Vote on a poll.
+
+        Args:
+            tweet_id: The poll tweet ID.
+            option_index: 0-based index of the option to vote for.
+        Returns:
+            True on success.
+        """
+        variables = {"tweet_id": tweet_id, "choice_number": option_index + 1}
+        self._graphql_post("VotePoll", variables)
+        self._write_delay()
+        return True
+
+    # ── Lists ────────────────────────────────────────────────────────
+
+    def create_list(self, name, description="", private=False):
+        # type: (str, str, bool) -> str
+        """Create a new Twitter List.
+
+        Args:
+            name: List name (max 25 chars).
+            description: Optional description (max 100 chars).
+            private: Whether the list is private.
+        Returns:
+            List ID.
+        """
+        variables = {
+            "name": name,
+            "description": description,
+            "private": private,
+        }
+        data = self._graphql_post("CreateList", variables)
+        self._write_delay()
+        result = _deep_get(data, "data", "create_list", "list", "id")
+        if result:
+            return result
+        raise TwitterAPIError(0, "Failed to create list")
+
+    def update_list(self, list_id, name=None, description=None, private=None):
+        # type: (str, Optional[str], Optional[str], Optional[bool]) -> bool
+        """Update a Twitter List."""
+        variables = {"list_id": list_id}
+        if name is not None:
+            variables["name"] = name
+        if description is not None:
+            variables["description"] = description
+        if private is not None:
+            variables["private"] = private
+        self._graphql_post("UpdateList", variables)
+        self._write_delay()
+        return True
+
+    def delete_list(self, list_id):
+        # type: (str) -> bool
+        """Delete a Twitter List."""
+        variables = {"list_id": list_id}
+        self._graphql_post("DeleteList", variables)
+        self._write_delay()
+        return True
+
+    def add_list_member(self, list_id, user_id):
+        # type: (str, str) -> bool
+        """Add a member to a Twitter List."""
+        variables = {"list_id": list_id, "user_id": user_id}
+        self._graphql_post("AddListMember", variables)
+        self._write_delay()
+        return True
+
+    def remove_list_member(self, list_id, user_id):
+        # type: (str, str) -> bool
+        """Remove a member from a Twitter List."""
+        variables = {"list_id": list_id, "user_id": user_id}
+        self._graphql_post("RemoveListMember", variables)
+        self._write_delay()
+        return True
+
+    def fetch_list_members(self, list_id, count=20):
+        # type: (str, int) -> List[UserProfile]
+        """Fetch members of a Twitter List."""
+        return self._fetch_user_list(
+            "GetListMembers", list_id, count,
+            lambda data: _deep_get(data, "data", "list", "members_timeline", "timeline", "instructions"),
+            use_post=True,
+        )
+
+    def fetch_list_subscriptions(self, user_id=None, count=20):
+        # type: (Optional[str], int) -> List[Dict[str, Any]]
+        """Fetch lists a user subscribes to (or authenticated user if user_id is None)."""
+        if user_id is None:
+            me = self.fetch_me()
+            user_id = me.id
+        variables = {"userId": user_id, "count": min(count, 100)}
+        data = self._graphql_get("GetListSubscriptions", variables, FEATURES)
+        return _deep_get(data, "data", "user", "result", "list_subscriptions", "lists") or []
+
+    # ── Notifications ────────────────────────────────────────────────
+
+    def fetch_notifications(self, count=20, filter_type=None):
+        # type: (int, Optional[str]) -> List[Dict[str, Any]]
+        """Fetch notifications for the authenticated user.
+
+        Args:
+            count: Max notifications to fetch.
+            filter_type: Optional filter - 'mentions', 'likes', 'retweets', 'follows', 'all'.
+        Returns:
+            List of notification objects.
+        """
+        variables = {"count": min(count, 100)}
+        if filter_type:
+            variables["filter"] = filter_type
+        data = self._graphql_get("GetNotifications", variables, FEATURES)
+        notifications = _deep_get(data, "data", "notifications", "timeline", "instructions")
+        return notifications or []
+
+    # ── Communities ──────────────────────────────────────────────────
+
+    def fetch_community_tweets(self, community_id, count=20):
+        # type: (str, int) -> List[Tweet]
+        """Fetch tweets from a Community."""
+        return self._fetch_timeline(
+            "GetCommunityTweets",
+            count,
+            lambda data: _deep_get(data, "data", "community", "tweets_timeline", "timeline", "instructions"),
+            extra_variables={"communityId": community_id},
+            override_base_variables=True,
+        )
+
+    def join_community(self, community_id):
+        # type: (str) -> bool
+        """Join a Community."""
+        variables = {"community_id": community_id}
+        self._graphql_post("JoinCommunity", variables)
+        self._write_delay()
+        return True
+
+    def leave_community(self, community_id):
+        # type: (str) -> bool
+        """Leave a Community."""
+        variables = {"community_id": community_id}
+        self._graphql_post("LeaveCommunity", variables)
         self._write_delay()
         return True
 

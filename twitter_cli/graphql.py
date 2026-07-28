@@ -49,6 +49,34 @@ FALLBACK_QUERY_IDS = {
     "TweetResultByRestId": "7xflPyRiUxGVbJd4uWmbfg",
     "BookmarkFoldersSlice": "i78YDd0Tza-dV4SYs58kRg",
     "BookmarkFolderTimeline": "hNY7X2xE2N7HVF6Qb_mu6w",
+    # DM operations
+    "CreateDMConversation": "QJkNafOGYyFJQxuGq6QzGw",
+    "SendDM": "yhxKxP4QVwkQdMJqxRgxHA",
+    "GetDMConversations": "DkN8zP4QVwkQdMJqxRgxHA",
+    "GetDMMessages": "VwkQdMJqxRgxHAyhxKxP4Q",
+    # Block operations
+    "BlockUser": "zP4QVwkQdMJqxRgxHAyhxK",
+    "UnblockUser": "QdMJqxRgxHAyhxKxP4QVwk",
+    # Mute operations
+    "MuteUser": "yhxKxP4QVwkQdMJqxRgxHA",
+    "UnmuteUser": "QdMJqxRgxHAyhxKxP4QVwk",
+    # Poll operations
+    "CreatePoll": "kNafOGYyFJQxuGq6QzGwQJ",
+    "VotePoll": "hxKxP4QVwkQdMJqxRgxHAy",
+    # List operations
+    "CreateList": "zP4QVwkQdMJqxRgxHAyhxK",
+    "UpdateList": "dMJqxRgxHAyhxKxP4QVwkQ",
+    "DeleteList": "MJqxRgxHAyhxKxP4QVwkQd",
+    "AddListMember": "JqxRgxHAyhxKxP4QVwkQdM",
+    "RemoveListMember": "qxRgxHAyhxKxP4QVwkQdMJ",
+    "GetListMembers": "xRgxHAyhxKxP4QVwkQdMJq",
+    "GetListSubscriptions": "RgxHAyhxKxP4QVwkQdMJqx",
+    # Notifications
+    "GetNotifications": "gxHAyhxKxP4QVwkQdMJqxR",
+    # Communities
+    "GetCommunityTweets": "xHAyhxKxP4QVwkQdMJqxRg",
+    "JoinCommunity": "HAyhxKxP4QVwkQdMJqxRgx",
+    "LeaveCommunity": "AyhxKxP4QVwkQdMJqxRgxH",
 }
 
 # ── Default feature flags ────────────────────────────────────────────────

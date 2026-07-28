@@ -1,13 +1,29 @@
-"""Serialization helpers for Tweet and UserProfile models."""
+"""Serialization helpers for Tweet, UserProfile, DM, List, Poll, and Community models."""
 
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional
 
-from .models import Author, BookmarkFolder, Metrics, Tweet, TweetMedia, UserProfile
+from .models import (
+    Author,
+    BookmarkFolder,
+    Community,
+    DMConversation,
+    DMMessage,
+    DMParticipant,
+    Metrics,
+    Poll,
+    PollOption,
+    Tweet,
+    TweetMedia,
+    TwitterList,
+    UserProfile,
+)
 from .timeutil import format_iso8601, format_local_time
 
+
+# ── Tweet serialization ──────────────────────────────────────────────────────
 
 def tweet_to_dict(tweet: Tweet) -> Dict[str, Any]:
     """Convert a Tweet dataclass into a JSON-safe dict."""
@@ -110,44 +126,30 @@ def tweet_from_dict(data: Dict[str, Any]) -> Tweet:
             TweetMedia(
                 type=str(item.get("type") or ""),
                 url=str(item.get("url") or ""),
-                width=_optional_int(item.get("width")),
-                height=_optional_int(item.get("height")),
+                width=item.get("width"),
+                height=item.get("height"),
             )
             for item in media_data
-            if isinstance(item, dict)
         ],
-        urls=[str(url) for url in (data.get("urls") or [])],
+        urls=data.get("urls") or [],
         is_retweet=bool(data.get("isRetweet", False)),
         lang=str(data.get("lang") or ""),
-        retweeted_by=_optional_str(data.get("retweetedBy")),
+        retweeted_by=data.get("retweetedBy"),
         quoted_tweet=quoted_tweet,
-        score=float(data["score"]) if data.get("score") is not None else None,
-        article_title=_optional_str(data.get("articleTitle")),
-        article_text=_optional_str(data.get("articleText")),
+        score=data.get("score"),
+        article_title=data.get("articleTitle"),
+        article_text=data.get("articleText"),
         is_subscriber_only=bool(data.get("isSubscriberOnly", False)),
         is_promoted=bool(data.get("isPromoted", False)),
     )
 
 
-def tweets_from_json(raw: str) -> List[Tweet]:
-    """Parse a JSON string into Tweet objects."""
-    payload = json.loads(raw)
-    if isinstance(payload, dict) and payload.get("ok") is True and isinstance(payload.get("data"), list):
-        payload = payload["data"]
-    if not isinstance(payload, list):
-        raise ValueError("Tweet JSON payload must be a list")
-    return [tweet_from_dict(item) for item in payload if isinstance(item, dict)]
+def tweets_to_json(tweets: List[Tweet]) -> str:
+    """Serialize tweets to JSON string."""
+    return json.dumps([tweet_to_dict(t) for t in tweets], ensure_ascii=False, indent=2)
 
 
-def tweets_to_json(tweets: Iterable[Tweet]) -> str:
-    """Serialize Tweet objects to pretty JSON."""
-    return json.dumps([tweet_to_dict(tweet) for tweet in tweets], ensure_ascii=False, indent=2)
-
-
-def tweets_to_data(tweets: Iterable[Tweet]) -> List[Dict[str, Any]]:
-    """Serialize Tweet objects to Python dicts."""
-    return [tweet_to_dict(tweet) for tweet in tweets]
-
+# ── Compact serialization (LLM-friendly minimal fields) ──────────────────────
 
 def tweet_to_compact_dict(tweet: Tweet) -> Dict[str, Any]:
     """Convert a Tweet into a compact dict with minimal fields for LLM consumption."""
@@ -170,7 +172,7 @@ def tweet_to_compact_dict(tweet: Tweet) -> Dict[str, Any]:
     }
 
 
-def tweets_to_compact_json(tweets: Iterable[Tweet]) -> str:
+def tweets_to_compact_json(tweets: List[Tweet]) -> str:
     """Serialize Tweet objects to compact JSON (minimal fields for LLM/pipe usage)."""
     return json.dumps(
         [tweet_to_compact_dict(tweet) for tweet in tweets],
@@ -179,66 +181,143 @@ def tweets_to_compact_json(tweets: Iterable[Tweet]) -> str:
     )
 
 
-def bookmark_folder_to_dict(folder: BookmarkFolder) -> Dict[str, Any]:
-    """Convert a BookmarkFolder dataclass into a JSON-safe dict."""
+def tweets_to_data(tweets: List[Tweet]) -> List[Dict[str, Any]]:
+    """Convert tweets to list of dicts for structured output."""
+    return [tweet_to_dict(t) for t in tweets]
+
+
+def tweets_from_json(json_str: str) -> List[Tweet]:
+    """Parse tweets from JSON string.
+
+    Handles both:
+    - Direct array: [tweet1, tweet2, ...]
+    - Envelope format: {"ok": true, "data": [tweet1, ...]}
+    """
+    data = json.loads(json_str)
+    if isinstance(data, dict) and data.get("ok") is True and isinstance(data.get("data"), list):
+        data = data["data"]
+    if not isinstance(data, list):
+        raise ValueError("Tweet JSON payload must be a list")
+    return [tweet_from_dict(item) for item in data]
+
+
+# ── UserProfile serialization ────────────────────────────────────────────────
+
+def user_profile_to_dict(profile: UserProfile) -> Dict[str, Any]:
+    """Convert UserProfile to JSON-safe dict."""
     return {
-        "id": folder.id,
-        "name": folder.name,
+        "id": profile.id,
+        "name": profile.name,
+        "screenName": profile.screen_name,
+        "bio": profile.bio,
+        "location": profile.location,
+        "url": profile.url,
+        "followers": profile.followers_count,
+        "following": profile.following_count,
+        "tweets": profile.tweets_count,
+        "likes": profile.likes_count,
+        "verified": profile.verified,
+        "profileImageUrl": profile.profile_image_url,
+        "createdAt": profile.created_at,
     }
 
 
-def bookmark_folders_to_data(folders: Iterable[BookmarkFolder]) -> List[Dict[str, Any]]:
-    """Serialize BookmarkFolder objects to Python dicts."""
-    return [bookmark_folder_to_dict(f) for f in folders]
+def users_to_data(users: List[UserProfile]) -> List[Dict[str, Any]]:
+    """Convert users to list of dicts for structured output."""
+    return [user_profile_to_dict(u) for u in users]
 
 
-def user_profile_to_dict(user: UserProfile) -> Dict[str, Any]:
-    """Convert a UserProfile dataclass into a JSON-safe dict."""
+def bookmark_folders_to_data(folders: List[BookmarkFolder]) -> List[Dict[str, Any]]:
+    """Convert bookmark folders to list of dicts."""
+    return [{"id": f.id, "name": f.name} for f in folders]
+
+
+# ── DM serialization ─────────────────────────────────────────────────────────
+
+def dm_participant_to_dict(p: DMParticipant) -> Dict[str, Any]:
     return {
-        "id": user.id,
-        "name": user.name,
-        "screenName": user.screen_name,
-        "bio": user.bio,
-        "location": user.location,
-        "url": user.url,
-        "followers": user.followers_count,
-        "following": user.following_count,
-        "tweets": user.tweets_count,
-        "likes": user.likes_count,
-        "verified": user.verified,
-        "profileImageUrl": user.profile_image_url,
-        "createdAt": user.created_at,
-        "createdAtISO": format_iso8601(user.created_at),
+        "id": p.id,
+        "name": p.name,
+        "screenName": p.screen_name,
+        "profileImageUrl": p.profile_image_url,
     }
 
 
-def users_to_json(users: Iterable[UserProfile]) -> str:
-    """Serialize UserProfile objects to pretty JSON."""
-    return json.dumps(
-        [user_profile_to_dict(user) for user in users],
-        ensure_ascii=False,
-        indent=2,
-    )
+def dm_message_to_dict(m: DMMessage) -> Dict[str, Any]:
+    return {
+        "id": m.id,
+        "conversationId": m.conversation_id,
+        "senderId": m.sender_id,
+        "senderScreenName": m.sender_screen_name,
+        "text": m.text,
+        "createdAt": m.created_at,
+        "media": [
+            {"type": media.type, "url": media.url, "width": media.width, "height": media.height}
+            for media in m.media
+        ],
+    }
 
 
-def users_to_data(users: Iterable[UserProfile]) -> List[Dict[str, Any]]:
-    """Serialize UserProfile objects to Python dicts."""
-    return [user_profile_to_dict(user) for user in users]
+def dm_conversation_to_dict(c: DMConversation) -> Dict[str, Any]:
+    return {
+        "id": c.id,
+        "participants": [dm_participant_to_dict(p) for p in c.participants],
+        "lastMessage": dm_message_to_dict(c.last_message) if c.last_message else None,
+        "updatedAt": c.updated_at,
+    }
 
 
-def _optional_int(value: Any) -> Optional[int]:
-    """Parse an optional integer value."""
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
+def dm_conversations_to_data(conversations: List[DMConversation]) -> List[Dict[str, Any]]:
+    return [dm_conversation_to_dict(c) for c in conversations]
 
 
-def _optional_str(value: Any) -> Optional[str]:
-    """Parse an optional string value."""
-    if value is None:
-        return None
-    text = str(value)
-    return text if text else None
+def dm_messages_to_data(messages: List[DMMessage]) -> List[Dict[str, Any]]:
+    return [dm_message_to_dict(m) for m in messages]
+
+
+# ── List serialization ───────────────────────────────────────────────────────
+
+def list_to_dict(lst: TwitterList) -> Dict[str, Any]:
+    return {
+        "id": lst.id,
+        "name": lst.name,
+        "description": lst.description,
+        "private": lst.private,
+        "memberCount": lst.member_count,
+        "subscriberCount": lst.subscriber_count,
+        "owner": user_profile_to_dict(lst.owner) if lst.owner else None,
+        "createdAt": lst.created_at,
+    }
+
+
+def lists_to_data(lists: List[TwitterList]) -> List[Dict[str, Any]]:
+    return [list_to_dict(l) for l in lists]
+
+
+# ── Poll serialization ───────────────────────────────────────────────────────
+
+def poll_option_to_dict(opt: PollOption) -> Dict[str, Any]:
+    return {"position": opt.position, "text": opt.text, "count": opt.count}
+
+
+def poll_to_dict(p: Poll) -> Dict[str, Any]:
+    return {
+        "options": [poll_option_to_dict(o) for o in p.options],
+        "durationMinutes": p.duration_minutes,
+        "endDatetime": p.end_datetime,
+        "votingStatus": p.voting_status,
+    }
+
+
+# ── Community serialization ──────────────────────────────────────────────────
+
+def community_to_dict(c: Community) -> Dict[str, Any]:
+    return {
+        "id": c.id,
+        "name": c.name,
+        "description": c.description,
+        "memberCount": c.member_count,
+        "private": c.private,
+        "ownerId": c.owner_id,
+        "createdAt": c.created_at,
+    }
