@@ -1,17 +1,10 @@
 # twitter-cli
 
-[![CI](https://github.com/jackwener/twitter-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jackwener/twitter-cli/actions/workflows/ci.yml)
+[![CI](https://github.com/ishan-parihar/twitter-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ishan-parihar/twitter-cli/actions/workflows/ci.yml)
 [![PyPI version](https://badge.fury.io/py/twitter-cli.svg)](https://pypi.org/project/twitter-cli/)
 [![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)](https://pypi.org/project/twitter-cli/)
 
-A terminal-first CLI for Twitter/X: read timelines, bookmarks, and user profiles without API keys.
-
-## More Tools
-
-- [xiaohongshu-cli](https://github.com/jackwener/xiaohongshu-cli) — Xiaohongshu (小红书) CLI for notes and account workflows
-- [bilibili-cli](https://github.com/jackwener/bilibili-cli) — Bilibili CLI for videos, users, search, and feeds
-- [discord-cli](https://github.com/jackwener/discord-cli) — Discord CLI for local-first sync, search, and export
-- [tg-cli](https://github.com/jackwener/tg-cli) — Telegram CLI for local-first sync, search, and export
+A terminal-first CLI for Twitter/X: read timelines, bookmarks, and user profiles without API keys. Now with **OAuth support**, **DM management**, and **media status tracking**.
 
 [English](#english) | [中文](#中文)
 
@@ -21,12 +14,16 @@ A terminal-first CLI for Twitter/X: read timelines, bookmarks, and user profiles
 
 **Read:**
 - Timeline: fetch `for-you` and `following` feeds
-- Bookmarks: list saved tweets from your account
+- Bookmarks: list saved tweets from your account (including **bookmark folders**)
 - Search: find tweets by keyword with Top/Latest/Photos/Videos tabs
 - Tweet detail: view a tweet and its replies; use `show <N>` to open tweet #N from the last list output
 - Article: fetch a Twitter Article and export it as Markdown
 - List timeline: fetch tweets from a Twitter List
 - User lookup: fetch user profile, tweets, likes, followers, and following
+- **Notifications**: fetch notifications with type filtering (mentions, likes, retweets, follows, quotes)
+- **Communities**: fetch tweets from Communities, join/leave Communities
+- **Polls**: create and vote on polls
+- **Lists**: full CRUD for Twitter Lists (create, update, delete, members, subscriptions)
 - `--full-text`: disable tweet text truncation in rich table output
 - Structured output: export any data as YAML or JSON for scripting and AI agent integration
 - Optional scoring filter: rank tweets by engagement weights
@@ -35,22 +32,35 @@ A terminal-first CLI for Twitter/X: read timelines, bookmarks, and user profiles
 > **AI Agent Tip:** Prefer `--yaml` for structured output unless a strict JSON parser is required. Non-TTY stdout defaults to YAML automatically. Use `--max` to limit results.
 
 **Write:**
-- Post: create new tweets and replies, with optional image attachments (up to 4)
+- Post: create new tweets and replies, with optional image/video attachments (up to 4 images, 1 video)
 - Quote: quote-tweet with optional images
 - Delete: remove your own tweets
 - Like / Unlike: manage tweet likes
 - Retweet / Unretweet: manage retweets
 - Bookmark: bookmark/unbookmark (`favorite/unfavorite` kept as compatibility aliases)
+- Follow / Unfollow: manage follows
+- **Block / Unblock**: block and unblock users
+- **Mute / Unmute**: mute and unmute users
+- **DM**: create conversations, send messages, list conversations/messages, mark read, typing indicator, rotate encryption keys
+- **Polls**: create polls (2-4 options, 5 min–7 days), vote on polls
+- **Lists**: create/update/delete lists, add/remove members, list members, list subscriptions
+- **Communities**: join/leave communities, fetch community tweets
 - Write commands also support explicit `--json` / `--yaml` output now
 
 **Auth & Anti-Detection:**
 - Cookie auth: use browser cookies or environment variables
+- **OAuth 1.0a / OAuth 2.0 PKCE / App-Only**: full OAuth flows for user-context and app-only access
 - Full cookie forwarding: extracts ALL browser cookies for richer browser context
 - TLS fingerprint impersonation: `curl_cffi` with dynamic Chrome version matching
 - `x-client-transaction-id` header generation
 - Request timing jitter to avoid pattern detection
 - Write operation delays (1.5–4s random) to mitigate rate limits
 - Proxy support via `TWITTER_PROXY` environment variable
+
+**Media & Utilities:**
+- **Media status**: check upload processing status for images/videos
+- **Auth management**: check status, clear cookies, login via OAuth flows
+- **Structured errors**: consistent error codes (`not_authenticated`, `not_found`, `invalid_input`, `rate_limited`, `api_error`)
 
 ### Installation
 
@@ -74,7 +84,7 @@ uv tool upgrade twitter-cli
 Install from source:
 
 ```bash
-git clone git@github.com:jackwener/twitter-cli.git
+git clone git@github.com:ishan-parihar/twitter-cli.git
 cd twitter-cli
 uv sync
 ```
@@ -167,6 +177,40 @@ twitter unretweet 1234567890
 twitter bookmark 1234567890
 twitter unbookmark 1234567890
 twitter follow elonmusk --json
+```
+
+### OAuth Authentication
+
+```bash
+# OAuth 2.0 PKCE (recommended for user context)
+twitter auth login --oauth2
+
+# OAuth 1.0a (legacy)
+twitter auth login --oauth1
+
+# App-Only (read-only public data)
+twitter auth login --app-only
+
+# Check auth status
+twitter auth status
+
+# Refresh OAuth2 token
+twitter auth refresh <refresh_token>
+
+# Clear stored environment cookies
+twitter auth clear
+```
+
+### Media & DM Management
+
+```bash
+# Check media upload status
+twitter media status <media_id>
+
+# DM conversation management
+twitter dm mark-read <conversation_id>
+twitter dm typing <conversation_id>
+twitter dm rotate-keys <conversation_id>
 ```
 
 ### Authentication
@@ -350,7 +394,7 @@ twitter-cli ships with a [`SKILL.md`](./SKILL.md) so AI agents can execute commo
 #### [Skills CLI](https://github.com/vercel-labs/skills) (Recommended)
 
 ```bash
-npx skills add jackwener/twitter-cli
+npx skills add ishan-parihar/twitter-cli
 ```
 
 | Flag | Description |
@@ -363,7 +407,7 @@ npx skills add jackwener/twitter-cli
 
 ```bash
 mkdir -p .agents/skills
-git clone git@github.com:jackwener/twitter-cli.git .agents/skills/twitter-cli
+git clone git@github.com:ishan-parihar/twitter-cli.git .agents/skills/twitter-cli
 ```
 
 #### ~~OpenClaw / ClawHub~~ (Deprecated)
@@ -596,7 +640,7 @@ twitter-cli 提供了 [`SKILL.md`](./SKILL.md)，可让 AI Agent 更稳定地调
 #### [Skills CLI](https://github.com/vercel-labs/skills)（推荐）
 
 ```bash
-npx skills add jackwener/twitter-cli
+npx skills add ishan-parihar/twitter-cli
 ```
 
 | 参数 | 说明 |
@@ -609,7 +653,7 @@ npx skills add jackwener/twitter-cli
 
 ```bash
 mkdir -p .agents/skills
-git clone git@github.com:jackwener/twitter-cli.git .agents/skills/twitter-cli
+git clone git@github.com:ishan-parihar/twitter-cli.git .agents/skills/twitter-cli
 ```
 
 #### ~~OpenClaw / ClawHub~~（已过时）
