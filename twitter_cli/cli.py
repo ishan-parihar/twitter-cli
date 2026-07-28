@@ -1417,6 +1417,158 @@ def auth_clear(as_json, as_yaml):
     console.print("[dim]Note: Browser cookies are not affected. Log out from x.com in your browser to fully clear.[/dim]")
 
 
+@auth.command(name="login")
+@click.option(
+    "--oauth1",
+    "auth_type",
+    flag_value="oauth1",
+    help="Use OAuth 1.0a (user context, requires consumer key/secret).",
+)
+@click.option(
+    "--oauth2",
+    "auth_type",
+    flag_value="oauth2",
+    default=True,
+    help="Use OAuth 2.0 PKCE (user context, recommended).",
+)
+@click.option(
+    "--app-only",
+    "auth_type",
+    flag_value="app_only",
+    help="Use App-Only (client credentials, read-only).",
+)
+@click.option(
+    "--scope",
+    default="tweet.read tweet.write users.read offline.access",
+    help="OAuth2 scope (for oauth2 type).",
+)
+@structured_output_options
+def auth_login(auth_type, scope, as_json, as_yaml):
+    # type: (str, str, bool, bool) -> None
+    """Authenticate with Twitter using OAuth.
+
+    Three authentication types:
+      --oauth2      OAuth 2.0 PKCE (recommended, supports refresh tokens)
+      --oauth1      OAuth 1.0a (legacy, requires consumer key/secret)
+      --app-only    App-Only client credentials (read-only public data)
+
+    Configure credentials via environment variables:
+      OAuth 1.0a:  TWITTER_OAUTH1_CONSUMER_KEY, TWITTER_OAUTH1_CONSUMER_SECRET
+      OAuth 2.0:   TWITTER_OAUTH2_CLIENT_ID, TWITTER_OAUTH2_CLIENT_SECRET
+      Redirect URI: TWITTER_REDIRECT_URI (default: http://localhost:8080/callback)
+    """
+    from .oauth import create_oauth_manager, OAuthManager
+
+    oauth1_key = os.environ.get("TWITTER_OAUTH1_CONSUMER_KEY", "")
+    oauth1_secret = os.environ.get("TWITTER_OAUTH1_CONSUMER_SECRET", "")
+    oauth2_id = os.environ.get("TWITTER_OAUTH2_CLIENT_ID", "")
+    oauth2_secret = os.environ.get("TWITTER_OAUTH2_CLIENT_SECRET", "")
+    redirect_uri = os.environ.get("TWITTER_REDIRECT_URI", "http://localhost:8080/callback")
+
+    manager = create_oauth_manager(
+        oauth1_consumer_key=oauth1_key,
+        oauth1_consumer_secret=oauth1_secret,
+        oauth2_client_id=oauth2_id,
+        oauth2_client_secret=oauth2_secret,
+        redirect_uri=redirect_uri,
+    )
+
+    try:
+        if auth_type == "oauth2":
+            if not oauth2_id or not oauth2_secret:
+                raise click.UsageError(
+                    "OAuth 2.0 requires TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET"
+                )
+            tokens = manager.oauth2_run_flow(scope)
+            payload = {
+                "auth_type": "oauth2",
+                "access_token": tokens.access_token,
+                "refresh_token": tokens.refresh_token,
+                "expires_in": tokens.expires_in,
+                "scope": tokens.scope,
+            }
+
+        elif auth_type == "oauth1":
+            if not oauth1_key or not oauth1_secret:
+                raise click.UsageError(
+                    "OAuth 1.0a requires TWITTER_OAUTH1_CONSUMER_KEY and TWITTER_OAUTH1_CONSUMER_SECRET"
+                )
+            # OAuth 1.0a flow
+            from .oauth import OAuth1Tokens
+            tokens = manager.oauth1_run_flow()
+            payload = {
+                "auth_type": "oauth1",
+                "access_token": tokens.oauth_token,
+                "access_token_secret": tokens.oauth_token_secret,
+            }
+
+        elif auth_type == "app_only":
+            if not oauth2_id or not oauth2_secret:
+                raise click.UsageError(
+                    "App-Only requires TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET"
+                )
+            tokens = manager.app_only_run_flow()
+            payload = {
+                "auth_type": "app_only",
+                "access_token": tokens.access_token,
+                "expires_in": tokens.expires_in,
+            }
+
+        else:
+            raise click.UsageError(f"Unknown auth type: {auth_type}")
+
+    except Exception as exc:
+        if emit_structured(error_payload("auth_failed", str(exc)), as_json=as_json, as_yaml=as_yaml):
+            raise SystemExit(1) from None
+        _exit_with_error(exc)
+
+    if emit_structured(success_payload(payload), as_json=as_json, as_yaml=as_yaml):
+        return
+
+    console.print("[green]✅ Authentication successful![/green]")
+    console.print("[dim]Tokens displayed above. Store them securely.[/dim]")
+
+
+@auth.command(name="refresh")
+@click.argument("refresh_token")
+@structured_output_options
+def auth_refresh(refresh_token, as_json, as_yaml):
+    # type: (str, bool, bool) -> None
+    """Refresh OAuth 2.0 access token using refresh token."""
+    from .oauth import create_oauth_manager
+
+    oauth2_id = os.environ.get("TWITTER_OAUTH2_CLIENT_ID", "")
+    oauth2_secret = os.environ.get("TWITTER_OAUTH2_CLIENT_SECRET", "")
+
+    if not oauth2_id or not oauth2_secret:
+        raise click.UsageError(
+            "OAuth 2.0 requires TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET"
+        )
+
+    manager = create_oauth_manager(
+        oauth2_client_id=oauth2_id,
+        oauth2_client_secret=oauth2_secret,
+    )
+
+    try:
+        tokens = manager.oauth2_refresh_token(refresh_token)
+        payload = {
+            "access_token": tokens.access_token,
+            "refresh_token": tokens.refresh_token,
+            "expires_in": tokens.expires_in,
+            "scope": tokens.scope,
+        }
+    except Exception as exc:
+        if emit_structured(error_payload("refresh_failed", str(exc)), as_json=as_json, as_yaml=as_yaml):
+            raise SystemExit(1) from None
+        _exit_with_error(exc)
+
+    if emit_structured(success_payload(payload), as_json=as_json, as_yaml=as_yaml):
+        return
+
+    console.print("[green]✅ Token refreshed![/green]")
+
+
 @cli.command(name="whoami")
 @structured_output_options
 def whoami(as_json, as_yaml):
