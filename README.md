@@ -8,6 +8,8 @@
 
 A terminal-first CLI for Twitter/X: read timelines, search, post, manage DMs, and automate with structured output built for AI agents.
 
+> **Fork notice:** This is a fork of [jackwener/twitter-cli](https://github.com/jackwener/twitter-cli) with extensive AXI (Agent Experience Interface) compliance improvements, TOON output format, session hooks, contextual help, and agent-ready structured output.
+
 ---
 
 ## Install
