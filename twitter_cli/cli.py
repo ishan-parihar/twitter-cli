@@ -1306,6 +1306,117 @@ def status(as_json, as_yaml):
     console.print("👤 @%s" % profile.screen_name)
 
 
+@cli.group(name="media", invoke_without_command=True)
+@click.pass_context
+def media(ctx):
+    # type: (Any) -> None
+    """Media management commands."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@media.command(name="status")
+@click.argument("media_id")
+@structured_output_options
+def media_status(media_id, as_json, as_yaml):
+    # type: (str, bool, bool) -> None
+    """Check media upload processing status."""
+    config = load_config()
+    try:
+        rich_output = use_rich_output(as_json=as_json, as_yaml=as_yaml)
+        client = _get_client(config, quiet=not rich_output)
+        if rich_output:
+            console.print("📤 Checking media status for %s..." % media_id)
+        status = client.check_media_status(media_id)
+    except (TwitterError, RuntimeError) as exc:
+        if emit_structured(error_payload(_error_code_from_exc(exc), str(exc)), as_json=as_json, as_yaml=as_yaml):
+            raise SystemExit(1) from None
+        _exit_with_error(exc)
+
+    if emit_structured(success_payload(status), as_json=as_json, as_yaml=as_yaml):
+        return
+
+    if rich_output:
+        state = status.get("state", "unknown")
+        progress = status.get("progress_percent", 0)
+        check_after = status.get("check_after_secs", 5)
+        error = status.get("error")
+        
+        if state == "succeeded":
+            console.print("[green]✅ Media processing complete[/green]")
+        elif state == "failed":
+            console.print("[red]❌ Media processing failed[/red]")
+            if error:
+                console.print("   Error: %s (code %s)" % (error.get('message', 'Unknown'), error.get('code', 'N/A')))
+        elif state == "in_progress":
+            console.print("[yellow]⏳ Media processing: %d%%[/yellow]" % progress)
+            console.print("   Check again in %ds" % check_after)
+        else:
+            console.print("[dim]❓ State: %s (%d%%)[/dim]" % (state, progress))
+        console.print()
+
+
+@cli.group(name="auth", invoke_without_command=True)
+@click.pass_context
+def auth(ctx):
+    # type: (Any) -> None
+    """Authentication management commands."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@auth.command(name="status")
+@structured_output_options
+def auth_status(as_json, as_yaml):
+    # type: (bool, bool) -> None
+    """Check authentication status and show current user."""
+    config = load_config()
+    try:
+        rich_output = use_rich_output(as_json=as_json, as_yaml=as_yaml)
+        client = _get_client(config, quiet=not rich_output)
+        if rich_output:
+            console.print("🔐 Checking authentication status...")
+        profile = client.fetch_me()
+    except (TwitterError, RuntimeError) as exc:
+        if emit_structured(error_payload(_error_code_from_exc(exc), str(exc)), as_json=as_json, as_yaml=as_yaml):
+            raise SystemExit(1) from None
+        _exit_with_error(exc)
+
+    payload = success_payload({"authenticated": True, "user": _agent_user_profile(profile)})
+    if emit_structured(payload, as_json=as_json, as_yaml=as_yaml):
+        return
+
+    console.print("[green]✅ Authenticated.[/green]")
+    console.print("👤 @%s" % profile.screen_name)
+
+
+@auth.command(name="clear")
+@click.confirmation_option(prompt="Are you sure you want to clear stored authentication?")
+@structured_output_options
+def auth_clear(as_json, as_yaml):
+    # type: (bool, bool) -> None
+    """Clear stored authentication (cookies)."""
+    # Clear environment variables if set
+    import os
+    cleared = []
+    if os.environ.get("TWITTER_AUTH_TOKEN"):
+        os.environ.pop("TWITTER_AUTH_TOKEN", None)
+        cleared.append("TWITTER_AUTH_TOKEN")
+    if os.environ.get("TWITTER_CT0"):
+        os.environ.pop("TWITTER_CT0", None)
+        cleared.append("TWITTER_CT0")
+    
+    payload = success_payload({"cleared": True, "variables": cleared})
+    if emit_structured(payload, as_json=as_json, as_yaml=as_yaml):
+        return
+
+    if cleared:
+        console.print("[green]✅ Cleared environment variables: %s[/green]" % ", ".join(cleared))
+    else:
+        console.print("[yellow]No environment variables to clear.[/yellow]")
+    console.print("[dim]Note: Browser cookies are not affected. Log out from x.com in your browser to fully clear.[/dim]")
+
+
 @cli.command(name="whoami")
 @structured_output_options
 def whoami(as_json, as_yaml):

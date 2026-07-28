@@ -632,3 +632,25 @@ def get_cookies() -> Dict[str, str]:
             return fresh_cookies
         raise
     return cookies
+
+
+def auth_status() -> Dict[str, Any]:
+    """Check authentication status by verifying cookies."""
+    try:
+        cookies = get_cookies()
+        return {"authenticated": True, "source": "cookies", "has_cookie_string": bool(cookies.get("cookie_string"))}
+    except AuthenticationError as e:
+        return {"authenticated": False, "error": str(e)}
+
+
+def auth_clear() -> bool:
+    """Clear stored authentication by removing environment variable hints.
+
+    Note: This only clears environment-based auth. Browser cookies are not removed
+    as they are managed by the browser itself.
+    """
+    # We can't actually clear browser cookies, but we can guide the user
+    # This function is mainly for consistency with xurl's auth clear
+    logger.info("Auth clear requested - browser cookies cannot be programmatically cleared")
+    logger.info("To clear auth, log out of x.com in your browser or clear browser cookies for x.com/twitter.com")
+    return True

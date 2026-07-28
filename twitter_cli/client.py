@@ -678,6 +678,39 @@ class TwitterClient:
 
         return media_id
 
+    def check_media_status(self, media_id):
+        # type: (str) -> Dict[str, Any]
+        """Check media processing status.
+
+        Returns a dict with state, progress_percent, and optional error info.
+        """
+        upload_url = "https://upload.twitter.com/i/media/upload.json"
+        session = _get_cffi_session()
+        headers = self._build_headers(url=upload_url, method="GET")
+        params = {
+            "command": "STATUS",
+            "media_id": media_id,
+        }
+        resp = session.get(upload_url, headers=headers, params=params, timeout=30)
+        if resp.status_code >= 400:
+            raise MediaUploadError("Media STATUS check failed (HTTP %d): %s" % (resp.status_code, resp.text[:300]))
+        try:
+            status = json.loads(resp.text)
+        except (json.JSONDecodeError, ValueError):
+            raise MediaUploadError("Media STATUS returned invalid JSON")
+        
+        processing = status.get("processing_info")
+        if not processing:
+            return {"state": "succeeded", "progress_percent": 100, "media_id": media_id}
+        
+        return {
+            "state": processing.get("state", "unknown"),
+            "progress_percent": processing.get("progress_percent", 0),
+            "check_after_secs": processing.get("check_after_secs", 5),
+            "error": processing.get("error"),
+            "media_id": media_id,
+        }
+
     def create_tweet(self, text, reply_to_id=None, media_ids=None):
         # type: (str, Optional[str], Optional[List[str]]) -> str
         """Post a new tweet.  Returns the new tweet ID.
