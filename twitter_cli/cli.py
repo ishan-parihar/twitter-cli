@@ -1791,9 +1791,10 @@ def help_cmd(ctx, command):
         click.echo(ctx.parent.get_help())
         return
     
-    # Get the subcommand
-    if command in ctx.command.commands:
-        subcmd = ctx.command.commands[command]
+    # Get the subcommand from the parent group
+    parent_group = ctx.parent.command
+    if command in parent_group.commands:
+        subcmd = parent_group.commands[command]
         # Show command help with inherited flags
         click.echo(subcmd.get_help(ctx))
         # Show contextual suggestions
