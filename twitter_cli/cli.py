@@ -1799,6 +1799,63 @@ def dm_send(conversation_id, text, as_json, as_yaml):
     )
 
 
+@dm.command(name="mark-read")
+@click.argument("conversation_id")
+@structured_output_options
+def dm_mark_read(conversation_id, as_json, as_yaml):
+    """Mark a DM conversation as read."""
+    def operation(client: TwitterClient) -> WritePayload:
+        client.mark_dm_conversation_read(conversation_id)
+        return {"success": True, "action": "mark_dm_read", "conversationId": conversation_id}
+
+    _run_write_command(
+        as_json=as_json,
+        as_yaml=as_yaml,
+        operation=operation,
+        progress_lines=["💬 Marking conversation %s as read..." % conversation_id],
+        success_lines=["[green]✅ Conversation marked as read![/green]"],
+        error_details={"action": "mark_dm_read", "conversationId": conversation_id},
+    )
+
+
+@dm.command(name="typing")
+@click.argument("conversation_id")
+@structured_output_options
+def dm_typing(conversation_id, as_json, as_yaml):
+    """Send typing indicator in a DM conversation."""
+    def operation(client: TwitterClient) -> WritePayload:
+        client.send_dm_typing_indicator(conversation_id)
+        return {"success": True, "action": "dm_typing", "conversationId": conversation_id}
+
+    _run_write_command(
+        as_json=as_json,
+        as_yaml=as_yaml,
+        operation=operation,
+        progress_lines=["⌨️  Sending typing indicator to conversation %s..." % conversation_id],
+        success_lines=["[green]✅ Typing indicator sent![/green]"],
+        error_details={"action": "dm_typing", "conversationId": conversation_id},
+    )
+
+
+@dm.command(name="rotate-keys")
+@click.argument("conversation_id")
+@structured_output_options
+def dm_rotate_keys(conversation_id, as_json, as_yaml):
+    """Rotate encryption keys for a DM conversation."""
+    def operation(client: TwitterClient) -> WritePayload:
+        client.rotate_dm_encryption_keys(conversation_id)
+        return {"success": True, "action": "dm_rotate_keys", "conversationId": conversation_id}
+
+    _run_write_command(
+        as_json=as_json,
+        as_yaml=as_yaml,
+        operation=operation,
+        progress_lines=["🔐 Rotating encryption keys for conversation %s..." % conversation_id],
+        success_lines=["[green]✅ Encryption keys rotated![/green]"],
+        error_details={"action": "dm_rotate_keys", "conversationId": conversation_id},
+    )
+
+
 # ── Poll commands ────────────────────────────────────────────────────────────
 
 @cli.group(name="poll", invoke_without_command=True)

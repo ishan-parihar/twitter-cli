@@ -54,6 +54,9 @@ FALLBACK_QUERY_IDS = {
     "SendDM": "yhxKxP4QVwkQdMJqxRgxHA",
     "GetDMConversations": "DkN8zP4QVwkQdMJqxRgxHA",
     "GetDMMessages": "VwkQdMJqxRgxHAyhxKxP4Q",
+    "MarkDMConversationRead": "QdMJqxRgxHAyhxKxP4QVwk",
+    "SendDMTypingIndicator": "dMJqxRgxHAyhxKxP4QVwkQ",
+    "RotateDMEncryptionKeys": "MJqxRgxHAyhxKxP4QVwkQd",
     # Block operations
     "BlockUser": "zP4QVwkQdMJqxRgxHAyhxK",
     "UnblockUser": "QdMJqxRgxHAyhxKxP4QVwk",

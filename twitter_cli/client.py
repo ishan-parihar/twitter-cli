@@ -1229,6 +1229,48 @@ class TwitterClient:
         messages = _deep_get(data, "data", "dm_conversation", "messages")
         return messages or []
 
+    def mark_dm_conversation_read(self, conversation_id):
+        # type: (str) -> bool
+        """Mark a DM conversation as read.
+
+        Args:
+            conversation_id: The conversation ID.
+        Returns:
+            True on success.
+        """
+        variables = {"conversation_id": conversation_id}
+        self._graphql_post("MarkDMConversationRead", variables)
+        self._write_delay()
+        return True
+
+    def send_dm_typing_indicator(self, conversation_id):
+        # type: (str) -> bool
+        """Send typing indicator in a DM conversation.
+
+        Args:
+            conversation_id: The conversation ID.
+        Returns:
+            True on success.
+        """
+        variables = {"conversation_id": conversation_id}
+        self._graphql_post("SendDMTypingIndicator", variables)
+        self._write_delay()
+        return True
+
+    def rotate_dm_encryption_keys(self, conversation_id):
+        # type: (str) -> bool
+        """Rotate encryption keys for a DM conversation.
+
+        Args:
+            conversation_id: The conversation ID.
+        Returns:
+            True on success.
+        """
+        variables = {"conversation_id": conversation_id}
+        self._graphql_post("RotateDMEncryptionKeys", variables)
+        self._write_delay()
+        return True
+
     # ── Block / Unblock ──────────────────────────────────────────────
 
     def block_user(self, user_id):
