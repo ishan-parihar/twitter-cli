@@ -65,6 +65,7 @@ from .formatter import (
 from .models import Tweet, UserProfile
 from .output import (
     default_structured_format,
+    emit_empty_state,
     emit_error,
     emit_structured,
     ensure_utf8_streams,
@@ -356,7 +357,14 @@ def _fetch_and_display(ctx, fetch_fn, label, emoji, max_count, as_json, as_yaml,
 
     save_tweet_cache(filtered)
 
-    if emit_structured(tweets_to_data(filtered, ctx.obj.get("fields")), as_json=as_json, as_yaml=as_yaml):
+    # P5 empty-state: emit structured empty result with hint
+    if not filtered:
+        if emit_empty_state(label, "Try `twitter feed` or `twitter search <query>` to find tweets.", as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
+            return
+        console.print("[dim]No %s found. Try `twitter feed` or `twitter search <query>`.[/dim]" % label)
+        return
+
+    if emit_structured(tweets_to_data(filtered, ctx.obj.get("fields")), as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
         return
 
     print_tweet_table(
@@ -372,10 +380,14 @@ def _fetch_and_display(ctx, fetch_fn, label, emoji, max_count, as_json, as_yaml,
 def _emit_timeline_structured(tweets, next_cursor, *, as_json, as_yaml, as_toon):
     # type: (TweetList, Optional[str], bool, bool) -> bool
     """Emit timeline data with pagination metadata while keeping `data` a tweet list."""
+    if not tweets:
+        if emit_empty_state("tweets", "Try `twitter feed` or `twitter search <query>`.", as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
+            return True
+        return False
     payload = success_payload(tweets_to_data(tweets))
     if next_cursor:
         payload["pagination"] = {"nextCursor": next_cursor}
-    return emit_structured(payload, as_json=as_json, as_yaml=as_yaml)
+    return emit_structured(payload, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon)
 
 
 def _run_bookmarks_command(max_count, as_json, as_yaml, output_file, do_filter, compact=False, full_text=False):

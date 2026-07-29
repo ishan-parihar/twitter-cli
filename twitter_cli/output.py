@@ -58,7 +58,7 @@ def default_structured_format(*, as_json: bool, as_yaml: bool, as_toon: bool = F
         return None
 
     if not sys.stdout.isatty():
-        return "yaml"
+        return "toon"
     return None
 
 
@@ -182,12 +182,35 @@ def emit_toon(data: Any) -> None:
     click.echo(_encode_toon(_normalize_success_payload(data)))
 
 
+def emit_empty_state(label: str, hint: str, *, as_json: bool = False, as_yaml: bool = False, as_toon: bool = False) -> bool:
+    """Emit a structured empty-state message when results are empty.
+    
+    Returns True when structured output was used, False for rich (human) output.
+    """
+    payload = success_payload({"items": [], "empty": True, "message": f"No {label} found.", "hint": hint})
+    if as_toon:
+        emit_toon(payload)
+        return True
+    fmt = default_structured_format(as_json=as_json, as_yaml=as_yaml)
+    if fmt == "json":
+        click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return True
+    if fmt == "yaml":
+        click.echo(yaml.safe_dump(payload, allow_unicode=True, sort_keys=False, default_flow_style=False))
+        return True
+    if fmt == "toon":
+        emit_toon(payload)
+        return True
+    return False
+
+
 def emit_error(
     code: str,
     message: str,
     *,
     as_json: bool | None = None,
     as_yaml: bool | None = None,
+    as_toon: bool | None = None,
     details: Any | None = None,
 ) -> bool:
     """Emit a structured error when the active output mode is machine-readable."""
