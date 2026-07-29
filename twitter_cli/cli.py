@@ -68,6 +68,7 @@ from .output import (
     emit_empty_state,
     emit_error,
     emit_structured,
+    emit_toon,
     ensure_utf8_streams,
     error_payload,
     structured_output_options,
@@ -304,7 +305,7 @@ def _run_write_command(
 @click.option("--debug", is_flag=True, help="Enable debug logging.")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress progress output.")
 @click.option("--fields", help="Comma-separated list of fields to include in output (e.g., id,author,text,likes,time).")
-@click.option("--format", "output_format", type=click.Choice(["table", "json", "yaml", "toon"]), default="table", help="Output format.")
+@click.option("--format", "output_format", type=click.Choice(["table", "json", "yaml", "toon"]), default="toon", help="Output format. toon (default)")
 @click.option("--verbose", "-V", is_flag=True, help="Enable debug logging.")
 @click.pass_context
 def cli(ctx, config, compact, full_text, debug, quiet, fields, output_format, verbose):
@@ -323,10 +324,16 @@ def cli(ctx, config, compact, full_text, debug, quiet, fields, output_format, ve
 
     # Content-first: if no subcommand invoked, show home timeline
     if ctx.invoked_subcommand is None:
+        if output_format not in ("json", "yaml"):
+            import shutil
+            bin_path = shutil.which("twitter") or "twitter"
+            console.print("bin: %s" % bin_path)
+            console.print("description: Twitter/X CLI — read timelines, search, post, and more")
+            console.print()
         ctx.invoke(ctx.command.commands["feed"])
 
 
-def _fetch_and_display(ctx, fetch_fn, label, emoji, max_count, as_json, as_yaml, as_toon, output_file, do_filter, config=None, compact=False, full_text=False):
+def _fetch_and_display(ctx, fetch_fn, label, emoji, max_count, as_json, as_yaml, as_toon, output_file, do_filter, config=None, compact=False, full_text=False, hint=None):
     # type: (Any, Any, str, str, Optional[int], bool, bool, bool, Optional[str], bool, Optional[dict], bool, bool) -> None
     """Common fetch-filter-display logic for timeline-like commands."""
     if config is None:
@@ -352,7 +359,11 @@ def _fetch_and_display(ctx, fetch_fn, label, emoji, max_count, as_json, as_yaml,
             console.print("💾 Saved to %s\n" % output_file)
 
     if compact:
-        click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
+        if ctx.obj.get("output_format") == "toon":
+            from .serialization import tweet_to_compact_dict
+            emit_toon([tweet_to_compact_dict(t) for t in filtered])
+        else:
+            click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
         return
 
     save_tweet_cache(filtered)
@@ -373,7 +384,7 @@ def _fetch_and_display(ctx, fetch_fn, label, emoji, max_count, as_json, as_yaml,
         title="%s %s — %d tweets" % (emoji, label, len(filtered)),
         full_text=full_text,
     )
-    _print_show_hint()
+    _print_show_hint(hint=hint)
     console.print()
 
 
@@ -385,13 +396,14 @@ def _emit_timeline_structured(tweets, next_cursor, *, as_json, as_yaml, as_toon)
             return True
         return False
     payload = success_payload(tweets_to_data(tweets))
+    payload["total_fetched"] = len(tweets)
     if next_cursor:
         payload["pagination"] = {"nextCursor": next_cursor}
     return emit_structured(payload, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon)
 
 
-def _run_bookmarks_command(max_count, as_json, as_yaml, output_file, do_filter, compact=False, full_text=False):
-    # type: (Optional[int], bool, bool, Optional[str], bool, bool, bool) -> None
+def _run_bookmarks_command(max_count, as_json, as_yaml, as_toon, output_file, do_filter, compact=False, full_text=False):
+    # type: (Optional[int], bool, bool, bool, Optional[str], bool, bool, bool) -> None
     config = load_config()
 
     def _run():
@@ -403,6 +415,7 @@ def _run_bookmarks_command(max_count, as_json, as_yaml, output_file, do_filter, 
             max_count,
             as_json,
             as_yaml,
+            as_toon,
             output_file,
             do_filter,
             config,
@@ -505,7 +518,11 @@ def feed_cmd(ctx, feed_type, max_count, cursor, as_json, as_yaml, as_toon, outpu
             console.print("💾 Saved filtered tweets to %s\n" % output_file)
 
     if compact:
-        click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
+        if ctx.obj.get("output_format") == "toon":
+            from .serialization import tweet_to_compact_dict
+            emit_toon([tweet_to_compact_dict(t) for t in filtered])
+        else:
+            click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
         return
 
     save_tweet_cache(filtered)
@@ -516,7 +533,7 @@ def feed_cmd(ctx, feed_type, max_count, cursor, as_json, as_yaml, as_toon, outpu
     title = "👥 Following" if feed_type == "following" else "📱 Twitter"
     title += " — %d tweets" % len(filtered)
     print_tweet_table(filtered, console, title=title, full_text=full_text)
-    _print_show_hint()
+    _print_show_hint(hint="Use `twitter search` for specific queries")
     console.print()
 
 
@@ -534,6 +551,7 @@ def favorites(ctx, max_count, as_json, as_yaml, as_toon, output_file, do_filter,
         max_count,
         as_json,
         as_yaml,
+        as_toon,
         output_file,
         do_filter,
         compact=ctx.obj.get("compact", False),
@@ -556,6 +574,7 @@ def bookmarks(ctx, max_count, as_json, as_yaml, as_toon, output_file, do_filter,
             max_count,
             as_json,
             as_yaml,
+            as_toon,
             output_file,
             do_filter,
             compact=ctx.obj.get("compact", False),
@@ -828,6 +847,7 @@ def search(ctx, query, product, from_user, to_user, lang, since, until, has, exc
             lambda count: client.fetch_search(composed_query, count, product),
             "'%s' (%s)" % (composed_query, product), "🔍", max_count, as_json, as_yaml, as_toon, output_file, do_filter, config,
             compact=compact, full_text=full_text,
+            hint="Use `twitter show <N>` for tweet details",
         )
     _run_guarded(_run)
 
@@ -930,10 +950,11 @@ def _emit_tweet_detail(tweets, compact, as_json, as_yaml, as_toon, full_text):
     console.print()
 
 
-def _print_show_hint():
-    # type: () -> None
-    """Print a hint about the `show` command."""
-    console.print("[dim]💡 Use `twitter show <N>` to view tweet #N from this list.[/dim]")
+def _print_show_hint(hint=None):
+    # type: (Optional[str]) -> None
+    """Print a contextual hint about related commands."""
+    msg = hint or "Use `twitter show <N>` to view tweet #N from this list."
+    console.print(f"[dim]💡 {msg}[/dim]")
 
 
 @cli.command()
@@ -1077,7 +1098,11 @@ def list_timeline(ctx, list_id, max_count, cursor, as_json, as_yaml, as_toon, do
         filtered = _apply_filter(tweets, do_filter, config, rich_output=rich_output)
 
         if compact:
-            click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
+            if ctx.obj.get("output_format") == "toon":
+                from .serialization import tweet_to_compact_dict
+                emit_toon([tweet_to_compact_dict(t) for t in filtered])
+            else:
+                click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
             return
 
         save_tweet_cache(filtered)
@@ -2251,7 +2276,11 @@ def list_timeline_sub(ctx, list_id, max_count, cursor, as_json, as_yaml, as_toon
     filtered = _apply_filter(tweets, do_filter, config, rich_output=rich_output)
 
     if compact:
-        click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
+        if ctx.obj.get("output_format") == "toon":
+            from .serialization import tweet_to_compact_dict
+            emit_toon([tweet_to_compact_dict(t) for t in filtered])
+        else:
+            click.echo(tweets_to_compact_json(filtered, ctx.obj.get("fields")))
         return
 
     save_tweet_cache(filtered)
