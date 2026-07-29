@@ -22,10 +22,18 @@ from .timeutil import format_iso8601, format_local_time
 # ── Tweet serialization ──────────────────────────────────────────────────────
 
 def tweet_to_dict(tweet: Tweet) -> dict[str, Any]:
-    """Convert a Tweet dataclass into a JSON-safe dict."""
+    """Convert a Tweet dataclass into a JSON-safe dict.
+
+    Text is truncated at 500 chars (AXI §3) with a ``truncated`` flag.
+    """
+    text = tweet.text
+    truncated = False
+    if len(text) > 500:
+        text = text[:497] + "..."
+        truncated = True
     data = {
         "id": tweet.id,
-        "text": tweet.text,
+        "text": text,
         "author": {
             "id": tweet.author.id,
             "name": tweet.author.name,
@@ -61,6 +69,8 @@ def tweet_to_dict(tweet: Tweet) -> dict[str, Any]:
         "isSubscriberOnly": tweet.is_subscriber_only,
         "isPromoted": tweet.is_promoted,
     }
+    if truncated:
+        data["truncated"] = True
     if tweet.article_title is not None:
         data["articleTitle"] = tweet.article_title
     if tweet.article_text is not None:

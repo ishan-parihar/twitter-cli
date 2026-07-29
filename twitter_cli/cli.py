@@ -299,7 +299,7 @@ def _run_write_command(
 )
 @click.version_option(version=__version__, prog_name="twitter")
 @click.option("--config", "-C", type=click.Path(exists=True, path_type=Path), help="Config file path.")
-@click.option("--compact", "-c", is_flag=True, help="Compact output (single line per tweet).")
+@click.option("--compact/--full", "-c/-F", default=True, help="Compact output (default) or full output (15 fields).")
 @click.option("--full-text", is_flag=True, help="Show full tweet text (no truncation).")
 @click.option("--debug", is_flag=True, help="Enable debug logging.")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress progress output.")
