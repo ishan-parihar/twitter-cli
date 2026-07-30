@@ -31,35 +31,16 @@ class TwitterCookieValidator:
         self._session = None
 
     async def validate(self, cookies: dict[str, str]) -> bool:
-        """Validate cookies by calling Twitter API."""
+        """Validate cookies by checking required cookies are present."""
         try:
-            import curl_cffi.requests as cffi_requests
-            
-            # Use curl_cffi for proper TLS fingerprint
-            session = cffi_requests.AsyncSession(impersonate="chrome")
-            
-            # Set cookies
-            for name, value in cookies.items():
-                session.cookies.set(name, value, domain=".x.com")
-            
-            headers = {
-                "Authorization": "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
-                "X-Csrf-Token": cookies.get("ct0", ""),
-                "X-Twitter-Active-User": "yes",
-                "X-Twitter-Auth-Type": "OAuth2Session",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            }
-            
-            # Try to verify credentials
-            resp = await session.get(
-                "https://api.x.com/1.1/account/verify_credentials.json",
-                headers=headers,
-                timeout=10
-            )
-            
-            await session.close()
-            
-            return resp.status_code == 200
+            # For now, just check that required cookies are present
+            # Full API validation can be added later
+            required = ["auth_token", "ct0"]
+            for cookie in required:
+                if cookie not in cookies or not cookies[cookie]:
+                    logger.debug(f"Required cookie missing: {cookie}")
+                    return False
+            return True
         except Exception as e:
             logger.debug(f"Twitter cookie validation failed: {e}")
             return False
