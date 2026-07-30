@@ -9,8 +9,13 @@ description = "Twitter/X CLI using browser cookies and curl_cffi"
 requires-python = ">=3.11"
 dependencies = [
     "curl_cffi>=0.7.0",
-    "browser-cookie3>=0.10.0",
+    "browser-cookie3>=0.19",
     "inquirer>=3.4.0",
+    "click>=8.0",
+    "rich>=13.0",
+    "PyYAML>=6.0",
+    "xclienttransaction>=1.0.1",
+    "beautifulsoup4>=4.12",
     "obscura-cookie-manager @ git+https://github.com/ishan-parihar/obscura-cookie-manager.git",
 ]
 
@@ -18,7 +23,7 @@ dependencies = [
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.4"]
 
 [project.scripts]
-twitter = "twitter_cli.cli:main"
+twitter = "twitter_cli.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]

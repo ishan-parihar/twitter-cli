@@ -12,7 +12,7 @@ from typing import Any, Optional
 from obscura_cookie_manager import (
     ObscuraCookieManager,
     FileCookieStorage,
-    BrowserCookie3Extractor,
+    BrowserCookieExtractor,
     CookieSource,
     CookieValidationResult,
     ReLoginRequiredError,
@@ -78,9 +78,13 @@ class TwitterObscuraManager:
         cookie_path.parent.mkdir(parents=True, exist_ok=True)
         return FileCookieStorage(cookie_path)
 
-    def _get_extractor(self) -> BrowserCookie3Extractor:
+    def _get_extractor(self) -> BrowserCookieExtractor:
         """Get browser cookie extractor (prefers Arc/Chrome)."""
-        return BrowserCookie3Extractor("arc")
+        return BrowserCookieExtractor(
+            domain="x.com",
+            required_cookies=TWITTER_REQUIRED_COOKIES,
+            preferred_browsers=["arc", "chrome", "edge", "firefox", "brave"]
+        )
 
     def _get_manager(self) -> ObscuraCookieManager:
         """Get or create the ObscuraCookieManager instance."""
@@ -90,7 +94,6 @@ class TwitterObscuraManager:
                 extractor=self._get_extractor(),
                 validator=self._validator.validate,
                 required_cookies=TWITTER_REQUIRED_COOKIES,
-                domain="x.com",
                 validation_interval=300,  # 5 minutes
                 max_re_extraction_attempts=3,
                 re_extraction_cooldown=60,
