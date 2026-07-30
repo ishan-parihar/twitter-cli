@@ -132,6 +132,186 @@ def _setup_logging(verbose):
     )
 
 
+def _install_session_hook_and_exit():
+    # type: () -> None
+    """Install session hooks for Claude Code/Codex (AXI §7)."""
+    import json
+    from pathlib import Path
+
+    import shutil
+
+    bin_path = shutil.which("twitter") or "twitter"
+    home_dir = Path.home()
+
+    hooks_installed = []
+
+    # Claude Code: ~/.claude/settings.json
+    claude_settings = home_dir / ".claude" / "settings.json"
+    try:
+        if claude_settings.exists():
+            with open(claude_settings) as f:
+                settings = json.load(f)
+        else:
+            settings = {}
+        hooks = settings.get("hooks", {})
+        session_start = hooks.get("SessionStart", [])
+        already = any(
+            h.get("command") == f"{bin_path} feed --format toon"
+            for h in session_start
+            if isinstance(h, dict)
+        )
+        if not already:
+            session_start.append({"command": f"{bin_path} feed --format toon"})
+            hooks["SessionStart"] = session_start
+            settings["hooks"] = hooks
+            claude_settings.parent.mkdir(parents=True, exist_ok=True)
+            with open(claude_settings, "w") as f:
+                json.dump(settings, f, indent=2)
+            hooks_installed.append("Claude Code")
+    except Exception as e:
+        console.print(f"[red]Claude Code hook: {e}[/red]")
+
+    # Codex: ~/.codex/hooks.json
+    codex_hooks = home_dir / ".codex" / "hooks.json"
+    try:
+        if codex_hooks.exists():
+            with open(codex_hooks) as f:
+                hooks = json.load(f)
+        else:
+            hooks = {}
+        session_start = hooks.get("SessionStart", [])
+        already = any(
+            h.get("command") == f"{bin_path} feed --format toon"
+            for h in session_start
+            if isinstance(h, dict)
+        )
+        if not already:
+            session_start.append({"command": f"{bin_path} feed --format toon"})
+            hooks["SessionStart"] = session_start
+            codex_hooks.parent.mkdir(parents=True, exist_ok=True)
+            with open(codex_hooks, "w") as f:
+                json.dump(hooks, f, indent=2)
+            hooks_installed.append("Codex")
+    except Exception as e:
+        console.print(f"[red]Codex hook: {e}[/red]")
+
+    if hooks_installed:
+        console.print(f"[green]✅ Installed hooks for: {', '.join(hooks_installed)}[/green]")
+    else:
+        console.print("[yellow]⚠️  Hooks already installed or no supported editors found[/yellow]")
+    sys.exit(0)
+
+
+def _install_agent_skill_and_exit():
+    # type: () -> None
+    """Create installable agent skill from home view (AXI §7)."""
+    from pathlib import Path
+
+    import shutil
+
+    bin_path = shutil.which("twitter") or "twitter"
+    skill_dir = Path.home() / ".claude" / "skills" / "twitter-cli"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+
+    skill_content = """name: Twitter/X CLI
+description: Twitter/X automation with timeline reading, search, posting, and engagement features
+triggers:
+  - "twitter post"
+  - "twitter search"
+  - "twitter timeline"
+  - "twitter automation"
+  - "social media posting"
+  - "content creation"
+  - "x twitter"
+
+## Overview
+Twitter CLI provides comprehensive Twitter/X automation:
+- Timeline reading (home, following, bookmarks)
+- Search tweets and users
+- Post tweets, replies, and quote tweets
+- Engagement (like, retweet, bookmark, follow)
+- User profiles and analytics
+- Article and media support
+
+## Quick Start
+```bash
+# Show home timeline
+twitter feed
+
+# Search tweets
+twitter search "query"
+
+# Post a tweet
+twitter post "Hello world"
+
+# Get user profile
+twitter user elonmusk
+
+# Get tweet details
+twitter tweet 1234567890
+```
+
+## Commands
+
+### Reading
+- `twitter feed` - Home timeline (For You)
+- `twitter feed -t following` - Following feed
+- `twitter bookmarks` - Bookmarks
+- `twitter search "query"` - Search tweets
+- `twitter user <handle>` - User profile
+- `twitter user-posts <handle>` - User tweets
+- `twitter tweet <id>` - Tweet detail + replies
+- `twitter list <id>` - List timeline
+
+### Writing
+- `twitter post "text"` - Post a tweet
+- `twitter post "text" -i photo.jpg` - Post with image(s)
+- `twitter reply <id> "text"` - Reply to a tweet
+- `twitter quote <id> "text"` - Quote-tweet
+- `twitter delete <id>` - Delete a tweet
+- `twitter like/unlike <id>` - Like/unlike
+- `twitter retweet/unretweet <id>` - Retweet/unretweet
+- `twitter follow/unfollow <handle>` - Follow/unfollow
+
+### Output Formats
+- `--format toon` - TOON format (default, token-efficient)
+- `--format json` - JSON format
+- `--format yaml` - YAML format
+- `--format table` - Rich table format
+- `--fields id,author,text` - Custom field selection
+- `--full-text` - Show full tweet text (no truncation)
+
+## Session Integration
+Twitter CLI supports ObscuraCookieManager for browser cookie extraction:
+```bash
+# Automatic cookie extraction from browser
+twitter feed
+```
+
+The CLI will automatically extract cookies from your browser when needed.
+
+## Filtering
+Enable score-based filtering:
+```bash
+twitter feed --filter
+```
+
+Configure filters in `~/.twitter/config.yaml`:
+```yaml
+filter:
+  min_score: 50
+  max_age_hours: 24
+```
+"""
+
+    skill_file = skill_dir / "SKILL.md"
+    skill_file.write_text(skill_content)
+
+    console.print(f"[green]✅ Agent skill installed to: {skill_file}[/green]")
+    console.print("[green]   Will load automatically on Twitter-related tasks[/green]")
+    sys.exit(0)
+
+
 def _load_tweets_from_json(path):
     # type: (str) -> List[Tweet]
     """Load tweets from a JSON file (previously exported)."""
@@ -307,9 +487,11 @@ def _run_write_command(
 @click.option("--fields", help="Comma-separated list of fields to include in output (e.g., id,author,text,likes,time).")
 @click.option("--format", "output_format", type=click.Choice(["table", "json", "yaml", "toon"]), default="toon", help="Output format. toon (default)")
 @click.option("--verbose", "-V", is_flag=True, help="Enable debug logging.")
+@click.option("--install-hook", is_flag=True, help="Install session hooks for ambient context in Claude Code/Codex")
+@click.option("--install-skill", is_flag=True, help="Create installable agent skill for Claude Code")
 @click.pass_context
-def cli(ctx, config, compact, full_text, debug, quiet, fields, output_format, verbose):
-    # type: (Any, Optional[Path], bool, bool, bool, bool, Optional[str], str, bool) -> None
+def cli(ctx, config, compact, full_text, debug, quiet, fields, output_format, verbose, install_hook, install_skill):
+    # type: (Any, Optional[Path], bool, bool, bool, bool, Optional[str], str, bool, bool, bool) -> None
     """Twitter/X CLI — read timelines, search, post, and more."""
     ensure_utf8_streams()
     _setup_logging(verbose or debug)
@@ -321,6 +503,12 @@ def cli(ctx, config, compact, full_text, debug, quiet, fields, output_format, ve
     ctx.obj["quiet"] = quiet
     ctx.obj["fields"] = fields.split(",") if fields else None
     ctx.obj["output_format"] = output_format
+
+    # Handle AXI flags first (these exit)
+    if install_hook:
+        _install_session_hook_and_exit()
+    if install_skill:
+        _install_agent_skill_and_exit()
 
     # Content-first: if no subcommand invoked, show home timeline
     if ctx.invoked_subcommand is None:
