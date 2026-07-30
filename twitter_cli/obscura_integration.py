@@ -1,0 +1,148 @@
+"""
+Twitter/X-specific ObscuraCookieManager integration.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from pathlib import Path
+from typing import Any, Optional
+
+from obscura_cookie_manager import (
+    ObscuraCookieManager,
+    FileCookieStorage,
+    BrowserCookie3Extractor,
+    CookieSource,
+    CookieValidationResult,
+    ReLoginRequiredError,
+)
+
+logger = logging.getLogger(__name__)
+
+# Required cookies for Twitter/X
+TWITTER_REQUIRED_COOKIES = ["auth_token", "ct0"]
+
+
+class TwitterCookieValidator:
+    """Validates Twitter/X cookies by making an API call."""
+
+    def __init__(self):
+        self._session = None
+
+    async def validate(self, cookies: dict[str, str]) -> bool:
+        """Validate cookies by calling Twitter API."""
+        try:
+            import curl_cffi.requests as cffi_requests
+            
+            # Use curl_cffi for proper TLS fingerprint
+            session = cffi_requests.AsyncSession(impersonate="chrome")
+            
+            # Set cookies
+            for name, value in cookies.items():
+                session.cookies.set(name, value, domain=".x.com")
+            
+            headers = {
+                "Authorization": "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
+                "X-Csrf-Token": cookies.get("ct0", ""),
+                "X-Twitter-Active-User": "yes",
+                "X-Twitter-Auth-Type": "OAuth2Session",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            }
+            
+            # Try to verify credentials
+            resp = await session.get(
+                "https://api.x.com/1.1/account/verify_credentials.json",
+                headers=headers,
+                timeout=10
+            )
+            
+            await session.close()
+            
+            return resp.status_code == 200
+        except Exception as e:
+            logger.debug(f"Twitter cookie validation failed: {e}")
+            return False
+
+
+class TwitterObscuraManager:
+    """Twitter/X-specific wrapper around ObscuraCookieManager."""
+
+    def __init__(self):
+        self._manager: Optional[ObscuraCookieManager] = None
+        self._validator = TwitterCookieValidator()
+
+    def _get_storage(self) -> FileCookieStorage:
+        """Get file-based cookie storage."""
+        cookie_path = Path.home() / ".local" / "share" / "twitter-cli" / "cookies.json"
+        cookie_path.parent.mkdir(parents=True, exist_ok=True)
+        return FileCookieStorage(cookie_path)
+
+    def _get_extractor(self) -> BrowserCookie3Extractor:
+        """Get browser cookie extractor (prefers Arc/Chrome)."""
+        return BrowserCookie3Extractor("arc")
+
+    def _get_manager(self) -> ObscuraCookieManager:
+        """Get or create the ObscuraCookieManager instance."""
+        if self._manager is None:
+            self._manager = ObscuraCookieManager(
+                storage=self._get_storage(),
+                extractor=self._get_extractor(),
+                validator=self._validator.validate,
+                required_cookies=TWITTER_REQUIRED_COOKIES,
+                domain="x.com",
+                validation_interval=300,  # 5 minutes
+                max_re_extraction_attempts=3,
+                re_extraction_cooldown=60,
+            )
+        return self._manager
+
+    async def get_valid_cookies(self, force_refresh: bool = False) -> CookieValidationResult:
+        """Get valid cookies, performing validation and re-extraction as needed."""
+        manager = self._get_manager()
+        return await manager.get_cookies(force_refresh=force_refresh)
+
+    async def force_re_extraction(self) -> CookieValidationResult:
+        """Force re-extraction from browser (call after user logs in)."""
+        manager = self._get_manager()
+        return await manager.force_re_extraction()
+
+    async def invalidate_and_trigger_relogin(self) -> None:
+        """Invalidate auth and trigger re-login flow."""
+        manager = self._get_manager()
+        await manager.invalidate_and_trigger_relogin()
+
+    def is_cache_valid(self) -> bool:
+        """Check if cached cookies are within validation interval."""
+        manager = self._get_manager()
+        return manager.is_cache_valid()
+
+
+# Global instance
+_twitter_obscura_manager: Optional[TwitterObscuraManager] = None
+
+
+def get_twitter_obscura_manager() -> TwitterObscuraManager:
+    """Get the global Twitter Obscura manager instance."""
+    global _twitter_obscura_manager
+    if _twitter_obscura_manager is None:
+        _twitter_obscura_manager = TwitterObscuraManager()
+    return _twitter_obscura_manager
+
+
+async def get_valid_twitter_cookies(force_refresh: bool = False) -> CookieValidationResult:
+    """Get valid Twitter/X cookies using ObscuraCookieManager."""
+    manager = get_twitter_obscura_manager()
+    return await manager.get_valid_cookies(force_refresh)
+
+
+async def force_twitter_cookie_refresh() -> CookieValidationResult:
+    """Force re-extraction of Twitter/X cookies from browser."""
+    manager = get_twitter_obscura_manager()
+    return await manager.force_re_extraction()
+
+
+async def invalidate_twitter_auth() -> None:
+    """Invalidate Twitter/X auth and trigger re-login."""
+    manager = get_twitter_obscura_manager()
+    await manager.invalidate_and_trigger_relogin()

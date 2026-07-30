@@ -1,67 +1,29 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "twitter-cli"
-version = "0.9.0"
-description = "A CLI for Twitter/X — feed, bookmarks, and user timeline in terminal"
-readme = "README.md"
-license = "Apache-2.0"
-requires-python = ">=3.10"
-authors = [{ name = "jackwener", email = "jakevingoo@gmail.com" }]
-keywords = ["twitter", "x", "cli", "feed", "timeline"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Topic :: Utilities",
-]
+version = "0.8.6"
+description = "Twitter/X CLI using browser cookies and curl_cffi"
+requires-python = ">=3.11"
 dependencies = [
-    "browser-cookie3>=0.19",
-    "click>=8.0",
-    "rich>=13.0",
-    "PyYAML>=6.0",
-    "curl_cffi>=0.7",
-    "xclienttransaction>=1.0.1",
-    "beautifulsoup4>=4.12",
+    "curl_cffi>=0.7.0",
+    "browser-cookie3>=0.10.0",
+    "inquirer>=3.4.0",
+    "obscura-cookie-manager @ git+https://github.com/ishan-parihar/obscura-cookie-manager.git",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.0",
-    "ruff>=0.8",
-    "mypy>=1.14,<1.15",
-    "types-PyYAML>=6.0.12",
-]
-
-[project.urls]
-Homepage = "https://github.com/jackwener/twitter-cli"
-Repository = "https://github.com/jackwener/twitter-cli"
-Issues = "https://github.com/jackwener/twitter-cli/issues"
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.4"]
 
 [project.scripts]
-twitter = "twitter_cli.cli:cli"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-addopts = "-m 'not smoke'"
-markers = [
-    "smoke: real-API integration tests (run with: pytest -m smoke)",
-]
+twitter = "twitter_cli.cli:main"
 
 [tool.ruff]
 line-length = 100
+target-version = "py311"
 
-[tool.mypy]
-python_version = "3.10"
-ignore_missing_imports = true
-check_untyped_defs = true
-warn_unused_ignores = true
-no_implicit_optional = true
-
-[tool.hatch.build.targets.wheel]
-packages = ["twitter_cli"]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
