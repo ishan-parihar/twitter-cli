@@ -17,7 +17,7 @@ dependencies = [
     "xclienttransaction>=1.0.1",
     "beautifulsoup4>=4.12",
     "obscura-cookie-manager @ git+https://github.com/ishan-parihar/obscura-cookie-manager.git",
-    "obscura-daemon @ file:///${PROJECT_ROOT}/../obscura-daemon",
+    "obscura-daemon @ git+https://github.com/ishan-parihar/obscura-daemon.git",
 ]
 
 [project.optional-dependencies]
