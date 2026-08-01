@@ -587,7 +587,7 @@ def extract_from_browser() -> tuple[dict[str, str] | None, list[str]]:
 
 
 def get_cookies() -> dict[str, str]:
-    """Get Twitter cookies. Priority: env vars -> browser extraction.
+    """Get Twitter cookies. Priority: env vars -> daemon -> browser extraction.
 
     Raises RuntimeError if no cookies found.
     """
@@ -598,11 +598,27 @@ def get_cookies() -> dict[str, str]:
     cookies = load_from_env()
     if cookies:
         logger.info("Loaded cookies from environment variables")
+        return cookies
 
-    # 2. Try browser extraction (auto-detect)
-    if not cookies:
-        logger.debug("Attempting browser cookie extraction")
-        cookies, diagnostics = extract_from_browser()
+    # 2. Try obscura-daemon if enabled
+    use_daemon = os.getenv("TWITTER_USE_DAEMON", "true").lower() in ("1", "true", "yes", "on")
+    if use_daemon:
+        try:
+            import asyncio
+            from .obscura_daemon_integration import get_valid_twitter_cookies_from_daemon
+
+            result = asyncio.run(get_valid_twitter_cookies_from_daemon())
+            if result.valid and result.cookies:
+                logger.info("Loaded cookies from obscura-daemon")
+                return result.cookies
+            else:
+                logger.debug(f"Daemon cookies invalid: {result.error}, falling back to browser extraction")
+        except Exception as e:
+            logger.debug(f"Failed to get cookies from daemon: {e}, falling back to browser extraction")
+
+    # 3. Try browser extraction (auto-detect)
+    logger.debug("Attempting browser cookie extraction")
+    cookies, diagnostics = extract_from_browser()
 
     if not cookies:
         lines = ["No Twitter cookies found."]
@@ -616,7 +632,7 @@ def get_cookies() -> dict[str, str]:
         lines.append("Option 1: Set TWITTER_AUTH_TOKEN and TWITTER_CT0 environment variables")
         lines.append("Option 2: Make sure you are logged into x.com in your browser (Arc/Chrome/Edge/Firefox/Brave)")
         lines.append("")
-        lines.append("Run 'twitter -v <command>' for debug diagnostics.")
+        lines.append("Run 'twitter-lyr -v <command>' for debug diagnostics.")
         raise AuthenticationError("\n".join(lines))
 
     # Verify only for explicit auth failures; transient endpoint issues are tolerated.

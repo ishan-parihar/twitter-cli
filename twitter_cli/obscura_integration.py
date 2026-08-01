@@ -55,7 +55,7 @@ class TwitterObscuraManager:
 
     def _get_storage(self) -> FileCookieStorage:
         """Get file-based cookie storage."""
-        cookie_path = Path.home() / ".twitter-lyr" / "cookies.json"
+        cookie_path = Path.home() / ".local" / "share" / "twitter-lyr" / "cookies.json"
         cookie_path.parent.mkdir(parents=True, exist_ok=True)
         return FileCookieStorage(cookie_path)
 
