@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── twitter-cli installer ───────────────────────────────────────────────
-# curl -sSL https://raw.githubusercontent.com/jackwener/twitter-cli/main/install.sh | bash
+# ─── twitter-lyr installer ───────────────────────────────────────────────
+# curl -sSL https://raw.githubusercontent.com/ishan-parihar/twitter-lyr/main/install.sh | bash
 #
-# Installs twitter-cli globally using uv (preferred) or pipx/pip as fallback.
+# Installs twitter-lyr globally using uv (preferred) or pipx/pip as fallback.
 # Handles clean system setup including uv installation and dependency management.
 # ──────────────────────────────────────────────────────────────────────────
 
-REPO="https://github.com/jackwener/twitter-cli.git"
+REPO="https://github.com/ishan-parihar/twitter-lyr.git"
 REPO_GIT="git+${REPO}"
-BIN="twitter"
-MIN_PYTHON_VERSION="3.10"
+BIN="twitter-lyr"
+MIN_PYTHON_VERSION="3.11"
 
 # Colors
 RED='\033[0;31m'
@@ -96,7 +96,7 @@ install_with_uv() {
             ensure_path "$HOME/.local/bin"
             return 0
         else
-            warn "Could not locate installed binary. Check: $1 -m pip show twitter-cli"
+            warn "Could not locate installed binary. Check: $1 -m pip show twitter-lyr"
             return 0
         fi
     fi
@@ -166,7 +166,7 @@ install_pip() {
             ensure_path "$user_bin"
             return 0
         else
-            warn "Could not locate installed binary. Check: $py -m pip show twitter-cli"
+            warn "Could not locate installed binary. Check: $py -m pip show twitter-lyr"
             return 0
         fi
     fi
@@ -249,7 +249,7 @@ verify() {
 
 # ── Main ──────────────────────────────────────────────────────────────────
 main() {
-    info "Installing twitter-cli..."
+    info "Installing twitter-lyr..."
     echo ""
 
     # Install system dependencies
