@@ -1,4 +1,4 @@
-"""Time formatting utilities for twitter-cli.
+"""Time formatting utilities for twitter-lyr.
 
 Converts Twitter API timestamps (e.g. "Sat Mar 08 12:00:00 +0000 2026")
 into human-friendly local time and relative time strings.

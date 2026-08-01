@@ -5,7 +5,7 @@ Supports:
 2. OAuth 2.0 with PKCE (User Context) - Modern flow with refresh tokens
 3. OAuth 2.0 App-Only (Client Credentials) - Read-only public data
 
-Token storage: ~/.twitter-cli/tokens.json
+Token storage: ~/.twitter-lyr/tokens.json
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ OAUTH2_AUTHORIZE_URL = "https://twitter.com/i/oauth2/authorize"
 OAUTH2_TOKEN_URL = "https://api.twitter.com/2/oauth2/token"
 
 # Token storage
-TOKEN_FILE = Path.home() / ".twitter-cli" / "tokens.json"
+TOKEN_FILE = Path.home() / ".twitter-lyr" / "tokens.json"
 
 # Client ID/Secret for OAuth2 - these should be configured by user
 # Twitter Developer Portal: https://developer.twitter.com/en/portal/projects

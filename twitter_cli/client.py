@@ -1511,7 +1511,7 @@ class TwitterClient:
         # type: () -> str
         """Return path for transaction cache file."""
         home = os.path.expanduser("~")
-        return os.path.join(home, ".twitter-cli", "transaction_cache.json")
+        return os.path.join(home, ".twitter-lyr", "transaction_cache.json")
 
     def _load_ct_cache(self):
         # type: () -> bool

@@ -1,33 +1,33 @@
-"""CLI entry point for twitter-cli.
+"""CLI entry point for twitter-lyr.
 
 Read commands:
-    twitter feed                      # home timeline (For You)
-    twitter feed -t following         # following feed
-    twitter bookmarks                 # bookmarks
-    twitter bookmarks folders         # list bookmark folders
-    twitter bookmarks folders <id>    # tweets in a folder
-    twitter search "query"            # search tweets
-    twitter search "query" --from user  # advanced search
-    twitter user elonmusk             # user profile
-    twitter user-posts elonmusk       # user tweets
-    twitter likes elonmusk            # user likes
-    twitter tweet <id>                # tweet detail + replies
-    twitter article <id>              # Twitter Article as Markdown
-    twitter list <id>                 # list timeline
-    twitter followers <handle>        # followers list
-    twitter following <handle>        # following list
-    twitter whoami                    # current user profile
+    twitter-lyr feed                      # home timeline (For You)
+    twitter-lyr feed -t following         # following feed
+    twitter-lyr bookmarks                 # bookmarks
+    twitter-lyr bookmarks folders         # list bookmark folders
+    twitter-lyr bookmarks folders <id>    # tweets in a folder
+    twitter-lyr search "query"            # search tweets
+    twitter-lyr search "query" --from user  # advanced search
+    twitter-lyr user elonmusk             # user profile
+    twitter-lyr user-posts elonmusk       # user tweets
+    twitter-lyr likes elonmusk            # user likes
+    twitter-lyr tweet <id>                # tweet detail + replies
+    twitter-lyr article <id>              # Twitter Article as Markdown
+    twitter-lyr list <id>                 # list timeline
+    twitter-lyr followers <handle>        # followers list
+    twitter-lyr following <handle>        # following list
+    twitter-lyr whoami                    # current user profile
 
 Write commands:
-    twitter post "text"               # post a tweet
-    twitter post "text" -i photo.jpg  # post with image(s)
-    twitter reply <id> "text"         # reply to a tweet
-    twitter quote <id> "text"         # quote-tweet
-    twitter delete <id>               # delete a tweet
-    twitter like/unlike <id>          # like/unlike
-    twitter bookmark/unbookmark <id>  # bookmark/unbookmark
-    twitter retweet/unretweet <id>    # retweet/unretweet
-    twitter follow/unfollow <handle>  # follow/unfollow
+    twitter-lyr post "text"               # post a tweet
+    twitter-lyr post "text" -i photo.jpg  # post with image(s)
+    twitter-lyr reply <id> "text"         # reply to a tweet
+    twitter-lyr quote <id> "text"         # quote-tweet
+    twitter-lyr delete <id>               # delete a tweet
+    twitter-lyr like/unlike <id>          # like/unlike
+    twitter-lyr bookmark/unbookmark <id>  # bookmark/unbookmark
+    twitter-lyr retweet/unretweet <id>    # retweet/unretweet
+    twitter-lyr follow/unfollow <handle>  # follow/unfollow
 """
 
 from __future__ import annotations
@@ -140,7 +140,7 @@ def _install_session_hook_and_exit():
 
     import shutil
 
-    bin_path = shutil.which("twitter") or "twitter"
+    bin_path = shutil.which("twitter-lyr") or "twitter-lyr"
     home_dir = Path.home()
 
     hooks_installed = []
@@ -209,20 +209,20 @@ def _install_agent_skill_and_exit():
 
     import shutil
 
-    bin_path = shutil.which("twitter") or "twitter"
-    skill_dir = Path.home() / ".claude" / "skills" / "twitter-cli"
+    bin_path = shutil.which("twitter-lyr") or "twitter-lyr"
+    skill_dir = Path.home() / ".claude" / "skills" / "twitter-lyr"
     skill_dir.mkdir(parents=True, exist_ok=True)
 
     skill_content = """name: Twitter/X CLI
 description: Twitter/X automation with timeline reading, search, posting, and engagement features
 triggers:
-  - "twitter post"
-  - "twitter search"
-  - "twitter timeline"
-  - "twitter automation"
+  - "twitter-lyr post"
+  - "twitter-lyr search"
+  - "twitter-lyr timeline"
+  - "twitter-lyr automation"
   - "social media posting"
   - "content creation"
-  - "x twitter"
+  - "x twitter-lyr"
 
 ## Overview
 Twitter CLI provides comprehensive Twitter/X automation:
@@ -236,42 +236,42 @@ Twitter CLI provides comprehensive Twitter/X automation:
 ## Quick Start
 ```bash
 # Show home timeline
-twitter feed
+twitter-lyr feed
 
 # Search tweets
-twitter search "query"
+twitter-lyr search "query"
 
 # Post a tweet
-twitter post "Hello world"
+twitter-lyr post "Hello world"
 
 # Get user profile
-twitter user elonmusk
+twitter-lyr user elonmusk
 
 # Get tweet details
-twitter tweet 1234567890
+twitter-lyr tweet 1234567890
 ```
 
 ## Commands
 
 ### Reading
-- `twitter feed` - Home timeline (For You)
-- `twitter feed -t following` - Following feed
-- `twitter bookmarks` - Bookmarks
-- `twitter search "query"` - Search tweets
-- `twitter user <handle>` - User profile
-- `twitter user-posts <handle>` - User tweets
-- `twitter tweet <id>` - Tweet detail + replies
-- `twitter list <id>` - List timeline
+- `twitter-lyr feed` - Home timeline (For You)
+- `twitter-lyr feed -t following` - Following feed
+- `twitter-lyr bookmarks` - Bookmarks
+- `twitter-lyr search "query"` - Search tweets
+- `twitter-lyr user <handle>` - User profile
+- `twitter-lyr user-posts <handle>` - User tweets
+- `twitter-lyr tweet <id>` - Tweet detail + replies
+- `twitter-lyr list <id>` - List timeline
 
 ### Writing
-- `twitter post "text"` - Post a tweet
-- `twitter post "text" -i photo.jpg` - Post with image(s)
-- `twitter reply <id> "text"` - Reply to a tweet
-- `twitter quote <id> "text"` - Quote-tweet
-- `twitter delete <id>` - Delete a tweet
-- `twitter like/unlike <id>` - Like/unlike
-- `twitter retweet/unretweet <id>` - Retweet/unretweet
-- `twitter follow/unfollow <handle>` - Follow/unfollow
+- `twitter-lyr post "text"` - Post a tweet
+- `twitter-lyr post "text" -i photo.jpg` - Post with image(s)
+- `twitter-lyr reply <id> "text"` - Reply to a tweet
+- `twitter-lyr quote <id> "text"` - Quote-tweet
+- `twitter-lyr delete <id>` - Delete a tweet
+- `twitter-lyr like/unlike <id>` - Like/unlike
+- `twitter-lyr retweet/unretweet <id>` - Retweet/unretweet
+- `twitter-lyr follow/unfollow <handle>` - Follow/unfollow
 
 ### Output Formats
 - `--format toon` - TOON format (default, token-efficient)
@@ -285,7 +285,7 @@ twitter tweet 1234567890
 Twitter CLI supports ObscuraCookieManager for browser cookie extraction:
 ```bash
 # Automatic cookie extraction from browser
-twitter feed
+twitter-lyr feed
 ```
 
 The CLI will automatically extract cookies from your browser when needed.
@@ -293,10 +293,10 @@ The CLI will automatically extract cookies from your browser when needed.
 ## Filtering
 Enable score-based filtering:
 ```bash
-twitter feed --filter
+twitter-lyr feed --filter
 ```
 
-Configure filters in `~/.twitter/config.yaml`:
+Configure filters in `~/.twitter-lyr/config.yaml`:
 ```yaml
 filter:
   min_score: 50
@@ -478,7 +478,7 @@ def _run_write_command(
     invoke_without_command=True,
     context_settings={"help_option_names": ["-h", "--help"], "ignore_unknown_options": False},
 )
-@click.version_option(version=__version__, prog_name="twitter")
+@click.version_option(version=__version__, prog_name="twitter-lyr")
 @click.option("--config", "-C", type=click.Path(exists=True, path_type=Path), help="Config file path.")
 @click.option("--compact/--full", "-c/-F", default=True, help="Compact output (default) or full output (15 fields).")
 @click.option("--full-text", is_flag=True, help="Show full tweet text (no truncation).")
@@ -514,7 +514,7 @@ def cli(ctx, config, compact, full_text, debug, quiet, fields, output_format, ve
     if ctx.invoked_subcommand is None:
         if output_format not in ("json", "yaml"):
             import shutil
-            bin_path = shutil.which("twitter") or "twitter"
+            bin_path = shutil.which("twitter-lyr") or "twitter-lyr"
             console.print("bin: %s" % bin_path)
             console.print("description: Twitter/X CLI — read timelines, search, post, and more")
             console.print()
@@ -558,9 +558,9 @@ def _fetch_and_display(ctx, fetch_fn, label, emoji, max_count, as_json, as_yaml,
 
     # P5 empty-state: emit structured empty result with hint
     if not filtered:
-        if emit_empty_state(label, "Try `twitter feed` or `twitter search <query>` to find tweets.", as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
+        if emit_empty_state(label, "Try `twitter-lyr feed` or `twitter-lyr search <query>` to find tweets.", as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
             return
-        console.print("[dim]No %s found. Try `twitter feed` or `twitter search <query>`.[/dim]" % label)
+        console.print("[dim]No %s found. Try `twitter-lyr feed` or `twitter-lyr search <query>`.[/dim]" % label)
         return
 
     if emit_structured(tweets_to_data(filtered, ctx.obj.get("fields")), as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
@@ -580,7 +580,7 @@ def _emit_timeline_structured(tweets, next_cursor, *, as_json, as_yaml, as_toon)
     # type: (TweetList, Optional[str], bool, bool) -> bool
     """Emit timeline data with pagination metadata while keeping `data` a tweet list."""
     if not tweets:
-        if emit_empty_state("tweets", "Try `twitter feed` or `twitter search <query>`.", as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
+        if emit_empty_state("tweets", "Try `twitter-lyr feed` or `twitter-lyr search <query>`.", as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
             return True
         return False
     payload = success_payload(tweets_to_data(tweets))
@@ -721,7 +721,7 @@ def feed_cmd(ctx, feed_type, max_count, cursor, as_json, as_yaml, as_toon, outpu
     title = "👥 Following" if feed_type == "following" else "📱 Twitter"
     title += " — %d tweets" % len(filtered)
     print_tweet_table(filtered, console, title=title, full_text=full_text)
-    _print_show_hint(hint="Use `twitter search` for specific queries")
+    _print_show_hint(hint="Use `twitter-lyr search` for specific queries")
     console.print()
 
 
@@ -785,10 +785,10 @@ def bookmarks_folders(ctx, folder_id, max_count, since, as_json, as_yaml, as_too
 
     \b
     Examples:
-        twitter bookmarks folders              # list all folders
-        twitter bookmarks folders <id>         # tweets in folder
-        twitter bookmarks folders <id> -n 50   # max 50 tweets
-        twitter bookmarks folders <id> --since 2026-01-01
+        twitter-lyr bookmarks folders              # list all folders
+        twitter-lyr bookmarks folders <id>         # tweets in folder
+        twitter-lyr bookmarks folders <id> -n 50   # max 50 tweets
+        twitter-lyr bookmarks folders <id> --since 2026-01-01
     """
     compact = ctx.obj.get("compact", False)
     max_count = _inherit_option(ctx, "max_count", max_count)
@@ -1000,10 +1000,10 @@ def search(ctx, query, product, from_user, to_user, lang, since, until, has, exc
     Advanced search examples:
 
     \b
-      twitter search "python" --from elonmusk
-      twitter search "AI" --lang en --since 2026-01-01
-      twitter search "rust" --has links --min-likes 100
-      twitter search --from bbc --exclude retweets
+      twitter-lyr search "python" --from elonmusk
+      twitter-lyr search "AI" --lang en --since 2026-01-01
+      twitter-lyr search "rust" --has links --min-likes 100
+      twitter-lyr search --from bbc --exclude retweets
     """
     from .search import build_search_query
 
@@ -1035,7 +1035,7 @@ def search(ctx, query, product, from_user, to_user, lang, since, until, has, exc
             lambda count: client.fetch_search(composed_query, count, product),
             "'%s' (%s)" % (composed_query, product), "🔍", max_count, as_json, as_yaml, as_toon, output_file, do_filter, config,
             compact=compact, full_text=full_text,
-            hint="Use `twitter show <N>` for tweet details",
+            hint="Use `twitter-lyr show <N>` for tweet details",
         )
     _run_guarded(_run)
 
@@ -1141,7 +1141,7 @@ def _emit_tweet_detail(tweets, compact, as_json, as_yaml, as_toon, full_text):
 def _print_show_hint(hint=None):
     # type: (Optional[str]) -> None
     """Print a contextual hint about related commands."""
-    msg = hint or "Use `twitter show <N>` to view tweet #N from this list."
+    msg = hint or "Use `twitter-lyr show <N>` to view tweet #N from this list."
     console.print(f"[dim]💡 {msg}[/dim]")
 
 
@@ -1161,8 +1161,8 @@ def show(ctx, index, max_count, full_text, output_file, as_json, as_yaml, as_too
     if tweet_id is None:
         if cache_size == 0:
             raise click.UsageError(
-                "No cached results found. Run `twitter feed`, `twitter search`, "
-                "`twitter bookmarks`, or another list command first."
+                "No cached results found. Run `twitter-lyr feed`, `twitter-lyr search`, "
+                "`twitter-lyr bookmarks`, or another list command first."
             )
         raise click.UsageError(
             "Index %d is out of range (cache has %d tweets)." % (index, cache_size)
@@ -1201,7 +1201,7 @@ def article(ctx, tweet_id, as_json, as_yaml, as_toon, as_markdown, output_file):
     """Fetch a Twitter Article. TWEET_ID is the numeric tweet ID or full URL."""
     compact = ctx.obj.get("compact", False)
     if compact:
-        raise click.UsageError("`twitter article` does not support --compact. Use --markdown or --output.")
+        raise click.UsageError("`twitter-lyr article` does not support --compact. Use --markdown or --output.")
     if as_markdown and (as_json or as_yaml):
         raise click.UsageError("Use only one of --markdown, --json, or --yaml.")
 
@@ -1432,13 +1432,13 @@ def post(text, reply_to, images, videos, as_json, as_yaml, as_toon):
     Attach images with --image / -i (up to 4):
 
     \b
-      twitter post "Hello!" --image photo.jpg
-      twitter post "Gallery" -i a.png -i b.png -i c.jpg
+      twitter-lyr post "Hello!" --image photo.jpg
+      twitter-lyr post "Gallery" -i a.png -i b.png -i c.jpg
 
     Attach a video with --video / -v (only 1 video allowed):
 
     \b
-      twitter post "Video tweet" --video clip.mp4
+      twitter-lyr post "Video tweet" --video clip.mp4
     """
     normalized_reply_to = _normalize_tweet_id(reply_to) if reply_to else None
     action = "Replying to %s" % normalized_reply_to if normalized_reply_to else "Posting tweet"
@@ -1982,7 +1982,7 @@ def unbookmark(tweet_id, as_json, as_yaml, as_toon):
 def session_install(ctx, shell, scope, as_json, as_yaml, as_toon):
     """Install shell hooks for agent session integration.
     
-    Adds a hook to run `twitter` on shell startup, providing live
+    Adds a hook to run `twitter-lyr` on shell startup, providing live
     timeline context to AI agents at session start.
     """
     hooks = {
@@ -1991,7 +1991,7 @@ def session_install(ctx, shell, scope, as_json, as_yaml, as_toon):
         "fish": "~/.config/fish/config.fish",
     }
     hook_file = Path(hooks[shell or "bash"]).expanduser()
-    hook_line = f"twitter --format yaml --compact 2>/dev/null || true"
+    hook_line = f"twitter-lyr --format yaml --compact 2>/dev/null || true"
     
     if hook_file.exists():
         content = hook_file.read_text()
@@ -2386,7 +2386,7 @@ def poll_vote(tweet_id, choice, as_json, as_yaml, as_toon):
 # ── List management commands ─────────────────────────────────────────────────
 
 class ListGroup(click.Group):
-    """Custom group that handles backward compatibility for `twitter list <id>`."""
+    """Custom group that handles backward compatibility for `twitter-lyr list <id>`."""
     
     def get_command(self, ctx, cmd_name):
         # First try to get a subcommand
@@ -2416,7 +2416,7 @@ class ListGroup(click.Group):
 @cli.group(name="list", cls=ListGroup, invoke_without_command=True)
 @click.pass_context
 def list_cmd(ctx):
-    """Twitter List commands. Use `twitter list <id>` to view a list timeline."""
+    """Twitter List commands. Use `twitter-lyr list <id>` to view a list timeline."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 

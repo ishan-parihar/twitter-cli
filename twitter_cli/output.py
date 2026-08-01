@@ -1,4 +1,4 @@
-"""Shared structured output helpers for twitter-cli."""
+"""Shared structured output helpers for twitter-lyr."""
 
 from __future__ import annotations
 

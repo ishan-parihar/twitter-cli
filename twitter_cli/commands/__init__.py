@@ -1,4 +1,4 @@
-"""CLI command sub-modules for twitter-cli.
+"""CLI command sub-modules for twitter-lyr.
 
 Commands are split into three groups:
   - read: feed, bookmarks, search, tweet, article, show, list, favorites

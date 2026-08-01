@@ -1,4 +1,4 @@
-"""Integration smoke tests for twitter-cli.
+"""Integration smoke tests for twitter-lyr.
 
 These tests invoke the real CLI commands with ``--yaml`` against the live
 Twitter/X API using your local browser cookies.  They are **skipped by

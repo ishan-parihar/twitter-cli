@@ -1,4 +1,4 @@
-"""Data models for twitter-cli.
+"""Data models for twitter-lyr.
 
 Defines Tweet, Author, Metrics, TweetMedia, and new models for DMs, Lists, Polls, Communities.
 """

@@ -1,4 +1,4 @@
-"""Shared constants for twitter-cli."""
+"""Shared constants for twitter-lyr."""
 
 import os
 import re

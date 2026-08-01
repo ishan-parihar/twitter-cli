@@ -1,4 +1,4 @@
-"""Custom exceptions for twitter-cli.
+"""Custom exceptions for twitter-lyr.
 
 Provides a structured exception hierarchy for categorized error handling:
 - Authentication failures
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 
 class TwitterError(RuntimeError):
-    """Base exception for twitter-cli errors."""
+    """Base exception for twitter-lyr errors."""
 
     error_code: str = "api_error"
 

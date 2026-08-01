@@ -11,7 +11,7 @@ from .models import Tweet
 
 logger = logging.getLogger(__name__)
 
-_CACHE_DIR = Path.home() / ".twitter-cli"
+_CACHE_DIR = Path.home() / ".twitter-lyr"
 _CACHE_FILE = _CACHE_DIR / "last_results.json"
 _TTL = 3600  # seconds
 

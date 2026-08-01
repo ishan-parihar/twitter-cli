@@ -3,7 +3,7 @@ requires = ["setuptools>=75.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "twitter-cli"
+name = "twitter-lyr"
 version = "0.8.6"
 description = "Twitter/X CLI using browser cookies and curl_cffi"
 requires-python = ">=3.11"
@@ -23,7 +23,7 @@ dependencies = [
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.4"]
 
 [project.scripts]
-twitter = "twitter_cli.cli:cli"
+twitter-lyr = "twitter_cli.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]
