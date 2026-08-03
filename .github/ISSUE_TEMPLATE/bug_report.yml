@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: "Run `twitter --version` or `pip show twitter-cli | grep Version`"
+      description: "Run `twitter --version` or `pip show twitter-lyr | grep Version`"
       placeholder: "e.g. 0.6.0"
     validations:
       required: true
@@ -38,7 +38,7 @@ body:
     id: access_method
     attributes:
       label: Access Method
-      description: How are you accessing the machine where twitter-cli runs?
+      description: How are you accessing the machine where twitter-lyr runs?
       options:
         - Local terminal
         - SSH

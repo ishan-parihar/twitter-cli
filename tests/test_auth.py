@@ -11,13 +11,19 @@ from twitter_cli import auth
 
 
 def test_get_cookies_prefers_env(monkeypatch) -> None:
-    monkeypatch.setattr(auth, "load_from_env", lambda: {"auth_token": "env-token", "ct0": "env-csrf"})
-    monkeypatch.setattr(auth, "extract_from_browser", lambda: pytest.fail("should not extract from browser"))
+    monkeypatch.setattr(
+        auth, "load_from_env", lambda: {"auth_token": "env-token", "ct0": "env-csrf"}
+    )
+    monkeypatch.setattr(
+        auth, "extract_from_browser", lambda: pytest.fail("should not extract from browser")
+    )
     seen = []
     monkeypatch.setattr(
         auth,
         "verify_cookies",
-        lambda auth_token, ct0, cookie_string=None: seen.append((auth_token, ct0, cookie_string)) or {},
+        lambda auth_token, ct0, cookie_string=None: (
+            seen.append((auth_token, ct0, cookie_string)) or {}
+        ),
     )
 
     cookies = auth.get_cookies()
@@ -28,12 +34,10 @@ def test_get_cookies_prefers_env(monkeypatch) -> None:
 
 def test_get_cookies_reextracts_after_verify_failure(monkeypatch) -> None:
     monkeypatch.setattr(auth, "load_from_env", lambda: None)
-    extracted = iter(
-        [
-            ({"auth_token": "stale-token", "ct0": "stale-csrf", "cookie_string": "stale=1"}, []),
-            ({"auth_token": "fresh-token", "ct0": "fresh-csrf", "cookie_string": "fresh=1"}, []),
-        ]
-    )
+    extracted = iter([
+        ({"auth_token": "stale-token", "ct0": "stale-csrf", "cookie_string": "stale=1"}, []),
+        ({"auth_token": "fresh-token", "ct0": "fresh-csrf", "cookie_string": "fresh=1"}, []),
+    ])
     monkeypatch.setattr(auth, "extract_from_browser", lambda: next(extracted))
 
     calls = []
@@ -243,7 +247,9 @@ def test_iter_chrome_cookie_files_env_override(monkeypatch, tmp_path) -> None:
     assert "Profile 5" in paths[0]
 
 
-def test_iter_chrome_cookie_files_edge_linux_uses_microsoft_edge_path(monkeypatch, tmp_path) -> None:
+def test_iter_chrome_cookie_files_edge_linux_uses_microsoft_edge_path(
+    monkeypatch, tmp_path
+) -> None:
     monkeypatch.setattr(auth.sys, "platform", "linux")
     edge_dir = tmp_path / ".config" / "microsoft-edge"
     (edge_dir / "Default").mkdir(parents=True)

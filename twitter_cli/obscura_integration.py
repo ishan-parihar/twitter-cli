@@ -64,7 +64,7 @@ class TwitterObscuraManager:
         return BrowserCookieExtractor(
             domain="x.com",
             required_cookies=TWITTER_REQUIRED_COOKIES,
-            preferred_browsers=["arc", "chrome", "edge", "firefox", "brave"]
+            preferred_browsers=["arc", "chrome", "edge", "firefox", "brave"],
         )
 
     def _get_manager(self) -> ObscuraCookieManager:

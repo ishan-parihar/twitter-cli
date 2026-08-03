@@ -21,6 +21,7 @@ from .timeutil import format_iso8601, format_local_time
 
 # ── Tweet serialization ──────────────────────────────────────────────────────
 
+
 def tweet_to_dict(tweet: Tweet) -> dict[str, Any]:
     """Convert a Tweet dataclass into a JSON-safe dict.
 
@@ -157,6 +158,7 @@ def tweets_to_json(tweets: list[Tweet]) -> str:
 
 # ── Compact serialization (LLM-friendly minimal fields) ──────────────────────
 
+
 def tweet_to_compact_dict(tweet: Tweet) -> dict[str, Any]:
     """Convert a Tweet into a compact dict with minimal fields for LLM consumption."""
     text = tweet.text.replace("\n", " ").strip()
@@ -209,6 +211,7 @@ def tweets_from_json(json_str: str) -> list[Tweet]:
 
 # ── UserProfile serialization ────────────────────────────────────────────────
 
+
 def user_profile_to_dict(profile: UserProfile) -> dict[str, Any]:
     """Convert UserProfile to JSON-safe dict."""
     return {
@@ -240,6 +243,7 @@ def bookmark_folders_to_data(folders: list[BookmarkFolder]) -> list[dict[str, An
 
 # ── DM serialization ─────────────────────────────────────────────────────────
 
+
 def dm_participant_to_dict(p: DMParticipant) -> dict[str, Any]:
     return {
         "id": p.id,
@@ -249,11 +253,9 @@ def dm_participant_to_dict(p: DMParticipant) -> dict[str, Any]:
     }
 
 
-
-
-
 def dm_conversations_to_data(conversations: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [dm_conversation_to_dict(c) for c in conversations]
+
 
 def dm_conversation_to_dict(conv: dict[str, Any]) -> dict[str, Any]:
     """Convert a DM conversation dict to serializable format."""
@@ -261,7 +263,10 @@ def dm_conversation_to_dict(conv: dict[str, Any]) -> dict[str, Any]:
     last_message = conv.get("last_message")
     return {
         "id": conv.get("id", ""),
-        "participants": [{"screen_name": p.get("screen_name", ""), "name": p.get("name", "")} for p in participants],
+        "participants": [
+            {"screen_name": p.get("screen_name", ""), "name": p.get("name", "")}
+            for p in participants
+        ],
         "lastMessage": dm_message_to_dict(last_message) if last_message else None,
         "updatedAt": conv.get("updated_at", ""),
     }
@@ -269,6 +274,7 @@ def dm_conversation_to_dict(conv: dict[str, Any]) -> dict[str, Any]:
 
 def dm_messages_to_data(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [dm_message_to_dict(m) for m in messages]
+
 
 def dm_message_to_dict(msg: dict[str, Any]) -> dict[str, Any]:
     """Convert a DM message dict to serializable format."""
@@ -284,10 +290,9 @@ def dm_message_to_dict(msg: dict[str, Any]) -> dict[str, Any]:
 # ── List serialization ───────────────────────────────────────────────────────
 
 
-
-
 def lists_to_data(lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [list_to_dict(l) for l in lists]
+
 
 def list_to_dict(lst: dict[str, Any]) -> dict[str, Any]:
     """Convert a Twitter list dict to serializable format."""
@@ -306,6 +311,7 @@ def list_to_dict(lst: dict[str, Any]) -> dict[str, Any]:
 
 # ── Poll serialization ───────────────────────────────────────────────────────
 
+
 def poll_option_to_dict(opt: PollOption) -> dict[str, Any]:
     return {"position": opt.position, "text": opt.text, "count": opt.count}
 
@@ -320,6 +326,7 @@ def poll_to_dict(p: Poll) -> dict[str, Any]:
 
 
 # ── Community serialization ──────────────────────────────────────────────────
+
 
 def community_to_dict(c: Community) -> dict[str, Any]:
     return {

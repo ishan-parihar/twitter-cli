@@ -86,6 +86,7 @@ def _best_chrome_target():
     """
     try:
         from curl_cffi.requests import BrowserType
+
         available = {e.value for e in BrowserType}
     except ImportError:
         # curl_cffi not installed or BrowserType not available
@@ -155,7 +156,9 @@ class TwitterClient:
 
     # ── Read operations ──────────────────────────────────────────────
 
-    def fetch_home_timeline(self, count=20, include_promoted=False, cursor=None, return_cursor=False):
+    def fetch_home_timeline(
+        self, count=20, include_promoted=False, cursor=None, return_cursor=False
+    ):
         # type: (int, bool, Optional[str], bool) -> Any
         """Fetch home timeline tweets."""
         return self._fetch_timeline(
@@ -167,7 +170,9 @@ class TwitterClient:
             return_cursor=return_cursor,
         )
 
-    def fetch_following_feed(self, count=20, include_promoted=False, cursor=None, return_cursor=False):
+    def fetch_following_feed(
+        self, count=20, include_promoted=False, cursor=None, return_cursor=False
+    ):
         # type: (int, bool, Optional[str], bool) -> Any
         """Fetch chronological following feed."""
         return self._fetch_timeline(
@@ -182,11 +187,14 @@ class TwitterClient:
     def fetch_bookmarks(self, count=50):
         # type: (int) -> List[Tweet]
         """Fetch bookmarked tweets."""
+
         def get_instructions(data):
             # type: (Any) -> Any
             instructions = _deep_get(data, "data", "bookmark_timeline", "timeline", "instructions")
             if instructions is None:
-                instructions = _deep_get(data, "data", "bookmark_timeline_v2", "timeline", "instructions")
+                instructions = _deep_get(
+                    data, "data", "bookmark_timeline_v2", "timeline", "instructions"
+                )
             return instructions
 
         return self._fetch_timeline("Bookmarks", count, get_instructions)
@@ -205,7 +213,11 @@ class TwitterClient:
 
             data = self._graphql_get("BookmarkFoldersSlice", variables, FEATURES)
             slice_data = _deep_get(
-                data, "data", "viewer", "user_results", "result",
+                data,
+                "data",
+                "viewer",
+                "user_results",
+                "result",
                 "bookmark_collections_slice",
             )
             if not isinstance(slice_data, dict):
@@ -227,10 +239,15 @@ class TwitterClient:
     def fetch_bookmark_folder_timeline(self, folder_id, count=50):
         # type: (str, int) -> List[Tweet]
         """Fetch tweets from a bookmark folder."""
+
         def get_instructions(data):
             # type: (Any) -> Any
             return _deep_get(
-                data, "data", "bookmark_collection_timeline", "timeline", "instructions",
+                data,
+                "data",
+                "bookmark_collection_timeline",
+                "timeline",
+                "instructions",
             )
 
         return self._fetch_timeline(
@@ -309,7 +326,9 @@ class TwitterClient:
             count,
             lambda data: (
                 _deep_get(data, "data", "user", "result", "timeline", "timeline", "instructions")
-                or _deep_get(data, "data", "user", "result", "timeline_v2", "timeline", "instructions")
+                or _deep_get(
+                    data, "data", "user", "result", "timeline_v2", "timeline", "instructions"
+                )
             ),
             extra_variables={
                 "userId": user_id,
@@ -327,10 +346,14 @@ class TwitterClient:
         def get_likes_instructions(data):
             # type: (Any) -> Any
             # New path (2024+): data.user.result.timeline.timeline.instructions
-            instructions = _deep_get(data, "data", "user", "result", "timeline", "timeline", "instructions")
+            instructions = _deep_get(
+                data, "data", "user", "result", "timeline", "timeline", "instructions"
+            )
             if instructions is None:
                 # Legacy path: data.user.result.timeline_v2.timeline.instructions
-                instructions = _deep_get(data, "data", "user", "result", "timeline_v2", "timeline", "instructions")
+                instructions = _deep_get(
+                    data, "data", "user", "result", "timeline_v2", "timeline", "instructions"
+                )
             return instructions
 
         return self._fetch_timeline(
@@ -361,7 +384,12 @@ class TwitterClient:
             "SearchTimeline",
             count,
             lambda data: _deep_get(
-                data, "data", "search_by_raw_query", "search_timeline", "timeline", "instructions",
+                data,
+                "data",
+                "search_by_raw_query",
+                "search_timeline",
+                "timeline",
+                "instructions",
             ),
             extra_variables={
                 "rawQuery": query,
@@ -378,8 +406,12 @@ class TwitterClient:
         return self._fetch_timeline(
             "TweetDetail",
             count,
-            lambda data: _deep_get(data, "data", "tweetResult", "result", "timeline", "instructions")
-            or _deep_get(data, "data", "threaded_conversation_with_injections_v2", "instructions"),
+            lambda data: (
+                _deep_get(data, "data", "tweetResult", "result", "timeline", "instructions")
+                or _deep_get(
+                    data, "data", "threaded_conversation_with_injections_v2", "instructions"
+                )
+            ),
             extra_variables={
                 "focalTweetId": tweet_id,
                 "referrer": "tweet",
@@ -445,7 +477,9 @@ class TwitterClient:
         return self._fetch_timeline(
             "ListLatestTweetsTimeline",
             count,
-            lambda data: _deep_get(data, "data", "list", "tweets_timeline", "timeline", "instructions"),
+            lambda data: _deep_get(
+                data, "data", "list", "tweets_timeline", "timeline", "instructions"
+            ),
             extra_variables={"listId": list_id},
             override_base_variables=True,
             start_cursor=cursor,
@@ -456,8 +490,12 @@ class TwitterClient:
         # type: (str, int) -> List[UserProfile]
         """Fetch followers of a user."""
         return self._fetch_user_list(
-            "Followers", user_id, count,
-            lambda data: _deep_get(data, "data", "user", "result", "timeline", "timeline", "instructions"),
+            "Followers",
+            user_id,
+            count,
+            lambda data: _deep_get(
+                data, "data", "user", "result", "timeline", "timeline", "instructions"
+            ),
             use_post=True,
         )
 
@@ -465,8 +503,12 @@ class TwitterClient:
         # type: (str, int) -> List[UserProfile]
         """Fetch users that a user is following."""
         return self._fetch_user_list(
-            "Following", user_id, count,
-            lambda data: _deep_get(data, "data", "user", "result", "timeline", "timeline", "instructions"),
+            "Following",
+            user_id,
+            count,
+            lambda data: _deep_get(
+                data, "data", "user", "result", "timeline", "timeline", "instructions"
+            ),
             use_post=True,
         )
 
@@ -526,7 +568,11 @@ class TwitterClient:
         if file_size > max_size:
             raise MediaUploadError(
                 "File too large: %.1f MB (max %.0f MB for %s)"
-                % (file_size / (1024 * 1024), max_size / (1024 * 1024), "video" if is_video else "image")
+                % (
+                    file_size / (1024 * 1024),
+                    max_size / (1024 * 1024),
+                    "video" if is_video else "image",
+                )
             )
 
         if media_type not in self._ALL_SUPPORTED_TYPES:
@@ -553,7 +599,9 @@ class TwitterClient:
         }
         resp = session.post(upload_url, headers=headers, data=init_data, timeout=30)
         if resp.status_code >= 400:
-            raise MediaUploadError("INIT failed (HTTP %d): %s" % (resp.status_code, resp.text[:300]))
+            raise MediaUploadError(
+                "INIT failed (HTTP %d): %s" % (resp.status_code, resp.text[:300])
+            )
         try:
             init_result = json.loads(resp.text)
         except (json.JSONDecodeError, ValueError):
@@ -592,8 +640,10 @@ class TwitterClient:
                     segment_index += 1
                     logger.info(
                         "Media APPEND: segment %d uploaded (%d/%d bytes, %.1f%%)",
-                        segment_index - 1, bytes_uploaded, file_size,
-                        bytes_uploaded / file_size * 100
+                        segment_index - 1,
+                        bytes_uploaded,
+                        file_size,
+                        bytes_uploaded / file_size * 100,
                     )
         else:
             # Single APPEND for images/GIFs
@@ -607,7 +657,9 @@ class TwitterClient:
             }
             resp = session.post(upload_url, headers=headers, data=append_data, timeout=60)
             if resp.status_code >= 400:
-                raise MediaUploadError("APPEND failed (HTTP %d): %s" % (resp.status_code, resp.text[:300]))
+                raise MediaUploadError(
+                    "APPEND failed (HTTP %d): %s" % (resp.status_code, resp.text[:300])
+                )
             logger.info("Media APPEND: segment 0 uploaded")
 
         # ── FINALIZE ─────────────────────────────────────────────────
@@ -619,7 +671,9 @@ class TwitterClient:
         }
         resp = session.post(upload_url, headers=headers, data=finalize_data, timeout=30)
         if resp.status_code >= 400:
-            raise MediaUploadError("FINALIZE failed (HTTP %d): %s" % (resp.status_code, resp.text[:300]))
+            raise MediaUploadError(
+                "FINALIZE failed (HTTP %d): %s" % (resp.status_code, resp.text[:300])
+            )
         logger.info("Media FINALIZE: media_id=%s ready", media_id)
 
         # ── STATUS / Wait for processing (video only) ───────────────
@@ -627,7 +681,6 @@ class TwitterClient:
             media_id = self._wait_for_media_processing(media_id, session, upload_url)
 
         return media_id
-
 
     def _wait_for_media_processing(self, media_id, session, upload_url):
         # type: (str, Any, str) -> str
@@ -695,16 +748,18 @@ class TwitterClient:
         }
         resp = session.get(upload_url, headers=headers, params=params, timeout=30)
         if resp.status_code >= 400:
-            raise MediaUploadError("Media STATUS check failed (HTTP %d): %s" % (resp.status_code, resp.text[:300]))
+            raise MediaUploadError(
+                "Media STATUS check failed (HTTP %d): %s" % (resp.status_code, resp.text[:300])
+            )
         try:
             status = json.loads(resp.text)
         except (json.JSONDecodeError, ValueError):
             raise MediaUploadError("Media STATUS returned invalid JSON")
-        
+
         processing = status.get("processing_info")
         if not processing:
             return {"state": "succeeded", "progress_percent": 100, "media_id": media_id}
-        
+
         return {
             "state": processing.get("state", "unknown"),
             "progress_percent": processing.get("progress_percent", 0),
@@ -829,7 +884,8 @@ class TwitterClient:
                         screen_name=sn,
                         bio=user_data.get("description", ""),
                         location=user_data.get("location", ""),
-                        url=_deep_get(user_data, "entities", "url", "urls", 0, "expanded_url") or "",
+                        url=_deep_get(user_data, "entities", "url", "urls", 0, "expanded_url")
+                        or "",
                         followers_count=_parse_int(user_data.get("followers_count"), 0),
                         following_count=_parse_int(user_data.get("friends_count"), 0),
                         tweets_count=_parse_int(user_data.get("statuses_count"), 0),
@@ -1106,8 +1162,12 @@ class TwitterClient:
         # type: (str, int) -> List[UserProfile]
         """Fetch members of a Twitter List."""
         return self._fetch_user_list(
-            "GetListMembers", list_id, count,
-            lambda data: _deep_get(data, "data", "list", "members_timeline", "timeline", "instructions"),
+            "GetListMembers",
+            list_id,
+            count,
+            lambda data: _deep_get(
+                data, "data", "list", "members_timeline", "timeline", "instructions"
+            ),
             use_post=True,
         )
 
@@ -1145,7 +1205,9 @@ class TwitterClient:
         return self._fetch_timeline(
             "GetCommunityTweets",
             count,
-            lambda data: _deep_get(data, "data", "community", "tweets_timeline", "timeline", "instructions"),
+            lambda data: _deep_get(
+                data, "data", "community", "tweets_timeline", "timeline", "instructions"
+            ),
             extra_variables={"communityId": community_id},
             override_base_variables=True,
         )
@@ -1226,7 +1288,19 @@ class TwitterClient:
 
     # ── Internal: timeline / user list fetchers ──────────────────────
 
-    def _fetch_timeline(self, operation_name, count, get_instructions, extra_variables=None, override_base_variables=False, field_toggles=None, use_post=False, include_promoted=False, start_cursor=None, return_cursor=False):
+    def _fetch_timeline(
+        self,
+        operation_name,
+        count,
+        get_instructions,
+        extra_variables=None,
+        override_base_variables=False,
+        field_toggles=None,
+        use_post=False,
+        include_promoted=False,
+        start_cursor=None,
+        return_cursor=False,
+    ):
         # type: (str, int, Callable[[Any], Any], Optional[Dict[str, Any]], bool, Optional[Dict[str, Any]], bool, bool, Optional[str], bool) -> Any
         """Generic timeline fetcher with pagination and deduplication.
 
@@ -1270,7 +1344,9 @@ class TwitterClient:
             if use_post:
                 data = self._graphql_post(operation_name, variables, FEATURES)
             else:
-                data = self._graphql_get(operation_name, variables, FEATURES, field_toggles=field_toggles)
+                data = self._graphql_get(
+                    operation_name, variables, FEATURES, field_toggles=field_toggles
+                )
             new_tweets, next_cursor = parse_timeline_response(data, get_instructions)
 
             for tweet in new_tweets:
@@ -1282,14 +1358,18 @@ class TwitterClient:
                 continuation_cursor = None
                 break
             if next_cursor == cursor:
-                logger.debug("Timeline pagination stopped because cursor did not advance: %s", next_cursor)
+                logger.debug(
+                    "Timeline pagination stopped because cursor did not advance: %s", next_cursor
+                )
                 continuation_cursor = None
                 break
             continuation_cursor = next_cursor
             cursor = next_cursor
 
             if not new_tweets:
-                logger.debug("Timeline page returned no tweets but exposed next cursor; continuing pagination")
+                logger.debug(
+                    "Timeline page returned no tweets but exposed next cursor; continuing pagination"
+                )
 
             # Rate-limit: sleep between paginated requests with jitter
             if len(tweets) < count and self._request_delay > 0:
@@ -1359,12 +1439,16 @@ class TwitterClient:
             if not next_cursor:
                 break
             if next_cursor == cursor:
-                logger.debug("User list pagination stopped because cursor did not advance: %s", next_cursor)
+                logger.debug(
+                    "User list pagination stopped because cursor did not advance: %s", next_cursor
+                )
                 break
             cursor = next_cursor
 
             if not new_users:
-                logger.debug("User list page returned no users but exposed next cursor; continuing pagination")
+                logger.debug(
+                    "User list page returned no users but exposed next cursor; continuing pagination"
+                )
 
             if len(users) < count and self._request_delay > 0:
                 time.sleep(self._request_delay * random.uniform(0.7, 1.5))
@@ -1385,10 +1469,16 @@ class TwitterClient:
         except TwitterAPIError as exc:
             # Fallback query IDs can go stale. Retry with live lookup if 404/422.
             if exc.status_code in (404, 422) and using_fallback:
-                logger.info("Retrying %s with live queryId after %d", operation_name, exc.status_code)
+                logger.info(
+                    "Retrying %s with live queryId after %d", operation_name, exc.status_code
+                )
                 _invalidate_query_id(operation_name)
-                refreshed_query_id = _resolve_query_id(operation_name, prefer_fallback=False, url_fetch_fn=_url_fetch)
-                retry_url = _build_graphql_url(refreshed_query_id, operation_name, variables, features, field_toggles)
+                refreshed_query_id = _resolve_query_id(
+                    operation_name, prefer_fallback=False, url_fetch_fn=_url_fetch
+                )
+                retry_url = _build_graphql_url(
+                    refreshed_query_id, operation_name, variables, features, field_toggles
+                )
                 return self._api_get(retry_url)
             raise
 
@@ -1410,9 +1500,13 @@ class TwitterClient:
             return _do_post(query_id)
         except TwitterAPIError as exc:
             if exc.status_code in (404, 422) and using_fallback:
-                logger.info("Retrying POST %s with live queryId after %d", operation_name, exc.status_code)
+                logger.info(
+                    "Retrying POST %s with live queryId after %d", operation_name, exc.status_code
+                )
                 _invalidate_query_id(operation_name)
-                refreshed = _resolve_query_id(operation_name, prefer_fallback=False, url_fetch_fn=_url_fetch)
+                refreshed = _resolve_query_id(
+                    operation_name, prefer_fallback=False, url_fetch_fn=_url_fetch
+                )
                 return _do_post(refreshed)
             raise
 
@@ -1438,17 +1532,22 @@ class TwitterClient:
             try:
                 if method == "POST":
                     response = session.post(
-                        url, headers=headers, json=json_body, timeout=30,
+                        url,
+                        headers=headers,
+                        json=json_body,
+                        timeout=30,
                     )
                 else:
                     response = session.get(url, headers=headers, timeout=30)
 
                 status_code = response.status_code
                 if status_code == 429 and attempt < self._max_retries:
-                    wait = self._retry_base_delay * (2 ** attempt) + random.uniform(0, 2)
+                    wait = self._retry_base_delay * (2**attempt) + random.uniform(0, 2)
                     logger.warning(
                         "Rate limited (429), retrying in %.1fs (attempt %d/%d)",
-                        wait, attempt + 1, self._max_retries,
+                        wait,
+                        attempt + 1,
+                        self._max_retries,
                     )
                     time.sleep(wait)
                     continue
@@ -1472,10 +1571,12 @@ class TwitterClient:
                 # Rate limit can also surface as a JSON error (code 88)
                 err_code = parsed["errors"][0].get("code", 0)
                 if err_code == 88 and attempt < self._max_retries:
-                    wait = self._retry_base_delay * (2 ** attempt) + random.uniform(0, 2)
+                    wait = self._retry_base_delay * (2**attempt) + random.uniform(0, 2)
                     logger.warning(
                         "Rate limited (code 88), retrying in %.1fs (attempt %d/%d)",
-                        wait, attempt + 1, self._max_retries,
+                        wait,
+                        attempt + 1,
+                        self._max_retries,
                     )
                     time.sleep(wait)
                     continue
@@ -1484,7 +1585,9 @@ class TwitterClient:
                 # Provide user-friendly message
                 if err_code in (348, 349):
                     raise TwitterAPIError(
-                        429, "Rate limited: %s (try again later, recommended wait: 15+ minutes)" % err_msg
+                        429,
+                        "Rate limited: %s (try again later, recommended wait: 15+ minutes)"
+                        % err_msg,
                     )
                 raise TwitterAPIError(0, "Twitter API returned errors: %s" % err_msg)
 
@@ -1581,14 +1684,18 @@ class TwitterClient:
             cffi_session = _get_cffi_session()
             ct_headers = _gen_ct_headers()
             home_page = cffi_session.get(
-                "https://x.com", headers=ct_headers, timeout=10,
+                "https://x.com",
+                headers=ct_headers,
+                timeout=10,
             )
             home_page_response = bs4.BeautifulSoup(home_page.content, "html.parser")
             ondemand_url = get_ondemand_file_url(response=home_page_response)
             if not ondemand_url:
                 raise ValueError("Failed to extract ondemand file URL from homepage")
             ondemand_file = cffi_session.get(
-                ondemand_url, headers=ct_headers, timeout=10,
+                ondemand_url,
+                headers=ct_headers,
+                timeout=10,
             )
             self._client_transaction = ClientTransaction(
                 home_page_response=home_page_response,
@@ -1609,7 +1716,8 @@ class TwitterClient:
         """Build shared headers for authenticated API calls."""
         headers = {
             "Authorization": "Bearer %s" % BEARER_TOKEN,
-            "Cookie": self._cookie_string or "auth_token=%s; ct0=%s" % (self._auth_token, self._ct0),
+            "Cookie": self._cookie_string
+            or "auth_token=%s; ct0=%s" % (self._auth_token, self._ct0),
             "X-Csrf-Token": self._ct0,
             "X-Twitter-Active-User": "yes",
             "X-Twitter-Auth-Type": "OAuth2Session",
@@ -1641,7 +1749,8 @@ class TwitterClient:
             try:
                 path = urllib.parse.urlparse(url).path
                 tid = self._client_transaction.generate_transaction_id(
-                    method=method, path=path,
+                    method=method,
+                    path=path,
                 )
                 headers["X-Client-Transaction-Id"] = tid
             except Exception as exc:

@@ -92,15 +92,12 @@ def print_tweet_table(
 
         # Stats
         rel_time = format_relative_time(tweet.created_at)
-        stats = (
-            "❤️ %s  🔄 %s\n💬 %s  👁️ %s\n🕐 %s"
-            % (
-                format_number(tweet.metrics.likes),
-                format_number(tweet.metrics.retweets),
-                format_number(tweet.metrics.replies),
-                format_number(tweet.metrics.views),
-                rel_time,
-            )
+        stats = "❤️ %s  🔄 %s\n💬 %s  👁️ %s\n🕐 %s" % (
+            format_number(tweet.metrics.likes),
+            format_number(tweet.metrics.retweets),
+            format_number(tweet.metrics.replies),
+            format_number(tweet.metrics.views),
+            rel_time,
         )
 
         # Score
@@ -161,12 +158,14 @@ def print_tweet_detail(tweet: Tweet, console: Console | None = None) -> None:
         % (local_time, rel_time, tweet.author.screen_name, tweet.id)
     )
 
-    console.print(Panel(
-        "\n".join(body_parts),
-        title=header,
-        border_style="blue",
-        expand=True,
-    ))
+    console.print(
+        Panel(
+            "\n".join(body_parts),
+            title=header,
+            border_style="blue",
+            expand=True,
+        )
+    )
 
 
 def article_to_markdown(tweet: Tweet) -> str:
@@ -212,12 +211,14 @@ def print_article(tweet: Tweet, console: Console | None = None) -> None:
             format_number(tweet.metrics.views),
         ),
     ]
-    console.print(Panel(
-        "\n".join(meta_parts),
-        title="📰 %s" % title,
-        border_style="blue",
-        expand=True,
-    ))
+    console.print(
+        Panel(
+            "\n".join(meta_parts),
+            title="📰 %s" % title,
+            border_style="blue",
+            expand=True,
+        )
+    )
 
     if tweet.article_text:
         console.print()
@@ -233,15 +234,11 @@ def print_filter_stats(
     if console is None:
         console = _make_console()
 
-    console.print(
-        "📊 Filter: %d → %d tweets" % (original_count, len(filtered))
-    )
+    console.print("📊 Filter: %d → %d tweets" % (original_count, len(filtered)))
     if filtered:
         top_score = filtered[0].score or 0.0
         bottom_score = filtered[-1].score or 0.0
-        console.print(
-            "   Score range: %.1f ~ %.1f" % (bottom_score, top_score)
-        )
+        console.print("   Score range: %.1f ~ %.1f" % (bottom_score, top_score))
 
 
 def print_user_profile(user: UserProfile, console: Console | None = None) -> None:
@@ -278,12 +275,14 @@ def print_user_profile(user: UserProfile, console: Console | None = None) -> Non
         lines.append("📅 Joined %s" % user.created_at)
     lines.append("🔗 x.com/%s" % user.screen_name)
 
-    console.print(Panel(
-        "\n".join(lines),
-        title=header,
-        border_style="cyan",
-        expand=True,
-    ))
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title=header,
+            border_style="cyan",
+            expand=True,
+        )
+    )
 
 
 def print_user_table(
@@ -312,12 +311,9 @@ def print_user_table(
         if len(bio) > 100:
             bio = bio[:97] + "..."
 
-        stats = (
-            "👥 %s followers\n📝 %s following"
-            % (
-                format_number(user.followers_count),
-                format_number(user.following_count),
-            )
+        stats = "👥 %s followers\n📝 %s following" % (
+            format_number(user.followers_count),
+            format_number(user.following_count),
         )
 
         table.add_row(str(i + 1), user_text, bio, stats)

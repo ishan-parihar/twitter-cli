@@ -1,10 +1,10 @@
 # Twitter CLI Upgrade Plan
 
 ## Overview
-Upgrade twitter-cli (Python, GraphQL/cookie-based) to achieve feature parity with xurl (Go, OAuth/API v2) while maintaining twitter-cli's superior GraphQL features.
+Upgrade twitter-lyr (Python, GraphQL/cookie-based) to achieve feature parity with xurl (Go, OAuth/API v2) while maintaining twitter-lyr's superior GraphQL features.
 
 ## Current Status
-- twitter-cli v0.9.0 installed on VPS
+- twitter-lyr v0.9.0 installed on VPS
 - xurl repo cloned at `/home/ishanp/Documents/GitHub/CLONED-REPOS/xurl` for reference
 - Comprehensive parity analysis complete (see `/tmp/parity_analysis.md`)
 
@@ -44,7 +44,7 @@ Upgrade twitter-cli (Python, GraphQL/cookie-based) to achieve feature parity wit
 ### 3.1 Architecture Changes ✅
 - Created `twitter_cli/oauth.py` module
 - Supports three auth modes: cookies (current), OAuth1, OAuth2 PKCE, App-only
-- Tokens stored in `~/.twitter-cli/tokens.json`
+- Tokens stored in `~/.twitter-lyr/tokens.json`
 
 ### 3.2 OAuth1 Flow (User Context) ✅
 **Command**: `twitter auth login --oauth1`
@@ -73,7 +73,7 @@ Upgrade twitter-cli (Python, GraphQL/cookie-based) to achieve feature parity wit
 - Expose write operations as MCP tools with confirmation
 
 ### 4.2 MCP Tools Mapping
-| twitter-cli command | MCP Tool |
+| twitter-lyr command | MCP Tool |
 |---------------------|----------|
 | feed | get_timeline |
 | search | search_tweets |
@@ -154,7 +154,7 @@ oauthlib>=3.3.0
 
 ## VPS Deployment
 
-- Repository: https://github.com/ishan-parihar/twitter-cli
+- Repository: https://github.com/ishan-parihar/twitter-lyr
 - VPS: Updated to latest (0.9.0) with all new features
 - Command: `twitter --help` shows all commands
 
@@ -167,7 +167,7 @@ oauthlib>=3.3.0
 
 ## Notes
 
-- twitter-cli's GraphQL approach provides MORE features than xurl's REST v2
+- twitter-lyr's GraphQL approach provides MORE features than xurl's REST v2
 - Focus on adding xurl's auth flexibility and MCP, not duplicating all REST endpoints
 - Some xurl features (streaming, webhooks) may not be feasible with GraphQL
 - Document any intentional gaps in README

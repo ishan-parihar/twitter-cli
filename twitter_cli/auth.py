@@ -28,7 +28,9 @@ _TWITTER_DOMAINS = {"x.com", "twitter.com", ".x.com", ".twitter.com"}
 
 
 def _is_twitter_domain(domain: str) -> bool:
-    return domain in _TWITTER_DOMAINS or domain.endswith(".x.com") or domain.endswith(".twitter.com")
+    return (
+        domain in _TWITTER_DOMAINS or domain.endswith(".x.com") or domain.endswith(".twitter.com")
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +54,11 @@ def _diagnose_keychain_issues(diagnostics: list[str]) -> str | None:
     if not any(kw in lowered for kw in _KEYCHAIN_ERROR_KEYWORDS):
         return None
 
-    is_ssh = bool(os.environ.get("SSH_CLIENT") or os.environ.get("SSH_TTY") or os.environ.get("SSH_CONNECTION"))
+    is_ssh = bool(
+        os.environ.get("SSH_CLIENT")
+        or os.environ.get("SSH_TTY")
+        or os.environ.get("SSH_CONNECTION")
+    )
 
     if sys.platform == "darwin":
         if is_ssh:
@@ -63,8 +69,8 @@ def _diagnose_keychain_issues(diagnostics: list[str]) -> str | None:
             )
         return (
             "macOS Keychain permission denied — your terminal is not authorized to read browser cookie encryption keys.\n"
-            "  Fix: Open Keychain Access → search for \"<Browser> Safe Storage\" → Access Control → add your Terminal app.\n"
-            "  Or click \"Always Allow\" when the Keychain authorization popup appears."
+            '  Fix: Open Keychain Access → search for "<Browser> Safe Storage" → Access Control → add your Terminal app.\n'
+            '  Or click "Always Allow" when the Keychain authorization popup appears.'
         )
     if sys.platform == "win32":
         return (
@@ -138,7 +144,8 @@ def verify_cookies(auth_token: str, ct0: str, cookie_string: str | None = None) 
             resp = session.get(url, headers=headers, timeout=5)
             if resp.status_code in (401, 403):
                 raise AuthenticationError(
-                    "Cookie expired or invalid (HTTP %d). Please re-login to x.com in your browser." % resp.status_code
+                    "Cookie expired or invalid (HTTP %d). Please re-login to x.com in your browser."
+                    % resp.status_code
                 )
             if resp.status_code == 200:
                 data = resp.json()
@@ -146,7 +153,9 @@ def verify_cookies(auth_token: str, ct0: str, cookie_string: str | None = None) 
                 logger.debug("Cookie verification succeeded via %s", endpoint)
                 return {"screen_name": data.get("screen_name", "")}
             attempts.append("%s=%d" % (endpoint, resp.status_code))
-            logger.debug("Verification endpoint %s returned HTTP %d, trying next...", url, resp.status_code)
+            logger.debug(
+                "Verification endpoint %s returned HTTP %d, trying next...", url, resp.status_code
+            )
             continue
         except RuntimeError:
             raise
@@ -232,7 +241,9 @@ def _iter_chrome_cookie_files(browser_name: str) -> list[str]:
         root = os.path.join(os.path.expanduser("~"), "Library", "Application Support", base_dir)
     elif sys.platform == "win32":
         if browser_name == "edge":
-            root = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data")
+            root = os.path.join(
+                os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data"
+            )
         else:
             root = os.path.join(os.environ.get("LOCALAPPDATA", ""), base_dir)
     else:
@@ -326,7 +337,9 @@ def _extract_in_process() -> tuple[dict[str, str] | None, list[str]]:
                     attempts.append("%s[%s]=%s" % (name, profile_name, type(e).__name__))
                     diagnostics.append("%s[%s]: %s" % (name, profile_name, e))
                     continue
-                cookies = _extract_cookies_from_jar(jar, source="%s[%s](in-process)" % (name, profile_name))
+                cookies = _extract_cookies_from_jar(
+                    jar, source="%s[%s](in-process)" % (name, profile_name)
+                )
                 if cookies:
                     logger.info("Found cookies in %s profile '%s' (in-process)", name, profile_name)
                     return cookies, diagnostics
@@ -356,7 +369,7 @@ def _extract_via_subprocess() -> tuple[dict[str, str] | None, list[str]]:
 
     Returns (cookies_dict | None, diagnostics_list).
     """
-    extract_script = '''
+    extract_script = """
 import glob, json, os, sys
 try:
     import browser_cookie3
@@ -483,7 +496,7 @@ print(json.dumps({
     "attempts": attempts,
 }))
 sys.exit(1)
-'''
+"""
 
     diagnostics: list[str] = []
 
@@ -523,7 +536,11 @@ sys.exit(1)
         if "error" in data:
             attempts = data.get("attempts") or []
             if attempts:
-                logger.debug("Subprocess extraction attempts (%s): %s", label, ", ".join(str(item) for item in attempts))
+                logger.debug(
+                    "Subprocess extraction attempts (%s): %s",
+                    label,
+                    ", ".join(str(item) for item in attempts),
+                )
                 diagnostics.extend(str(item) for item in attempts)
             retryable = data.get("error") == "browser-cookie3 not installed"
             return None, retryable
@@ -612,9 +629,13 @@ def get_cookies() -> dict[str, str]:
                 logger.info("Loaded cookies from obscura-daemon")
                 return result.cookies
             else:
-                logger.debug(f"Daemon cookies invalid: {result.error}, falling back to browser extraction")
+                logger.debug(
+                    f"Daemon cookies invalid: {result.error}, falling back to browser extraction"
+                )
         except Exception as e:
-            logger.debug(f"Failed to get cookies from daemon: {e}, falling back to browser extraction")
+            logger.debug(
+                f"Failed to get cookies from daemon: {e}, falling back to browser extraction"
+            )
 
     # 3. Try browser extraction (auto-detect)
     logger.debug("Attempting browser cookie extraction")
@@ -630,7 +651,9 @@ def get_cookies() -> dict[str, str]:
             lines.extend("  " + line for line in hint.splitlines())
             lines.append("")
         lines.append("Option 1: Set TWITTER_AUTH_TOKEN and TWITTER_CT0 environment variables")
-        lines.append("Option 2: Make sure you are logged into x.com in your browser (Arc/Chrome/Edge/Firefox/Brave)")
+        lines.append(
+            "Option 2: Make sure you are logged into x.com in your browser (Arc/Chrome/Edge/Firefox/Brave)"
+        )
         lines.append("")
         lines.append("Run 'twitter-lyr -v <command>' for debug diagnostics.")
         raise AuthenticationError("\n".join(lines))
@@ -644,7 +667,11 @@ def get_cookies() -> dict[str, str]:
         fresh_cookies, _ = extract_from_browser()
         if fresh_cookies:
             # Verify fresh cookies — if this also fails, let it raise
-            verify_cookies(fresh_cookies["auth_token"], fresh_cookies["ct0"], fresh_cookies.get("cookie_string"))
+            verify_cookies(
+                fresh_cookies["auth_token"],
+                fresh_cookies["ct0"],
+                fresh_cookies.get("cookie_string"),
+            )
             return fresh_cookies
         raise
     return cookies
@@ -654,7 +681,11 @@ def auth_status() -> dict[str, Any]:
     """Check authentication status by verifying cookies."""
     try:
         cookies = get_cookies()
-        return {"authenticated": True, "source": "cookies", "has_cookie_string": bool(cookies.get("cookie_string"))}
+        return {
+            "authenticated": True,
+            "source": "cookies",
+            "has_cookie_string": bool(cookies.get("cookie_string")),
+        }
     except AuthenticationError as e:
         return {"authenticated": False, "error": str(e)}
 
@@ -668,5 +699,7 @@ def auth_clear() -> bool:
     # We can't actually clear browser cookies, but we can guide the user
     # This function is mainly for consistency with xurl's auth clear
     logger.info("Auth clear requested - browser cookies cannot be programmatically cleared")
-    logger.info("To clear auth, log out of x.com in your browser or clear browser cookies for x.com/twitter.com")
+    logger.info(
+        "To clear auth, log out of x.com in your browser or clear browser cookies for x.com/twitter.com"
+    )
     return True

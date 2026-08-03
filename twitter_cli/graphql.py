@@ -150,11 +150,12 @@ def _scan_bundles(url_fetch_fn):
 
     try:
         from .constants import get_user_agent
+
         html = url_fetch_fn("https://x.com", {"user-agent": get_user_agent()})
         script_pattern = re.compile(
             r'(?:src|href)=["\']'
             r'(https://abs\.twimg\.com/responsive-web/client-web[^"\']+'
-            r'\.js)'
+            r"\.js)"
             r'["\']'
         )
         script_urls = script_pattern.findall(html)
@@ -175,7 +176,9 @@ def _scan_bundles(url_fetch_fn):
         except Exception:
             continue
 
-    logger.info("Scanned %d JS bundles, cached %d query IDs", len(script_urls), len(_cached_query_ids))
+    logger.info(
+        "Scanned %d JS bundles, cached %d query IDs", len(script_urls), len(_cached_query_ids)
+    )
 
 
 def _update_features_from_html(html):

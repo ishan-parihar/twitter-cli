@@ -82,7 +82,9 @@ def _extract_media(legacy):
             media.append(
                 TweetMedia(
                     type=media_type,
-                    url=mp4_variants[0]["url"] if mp4_variants else media_item.get("media_url_https", ""),
+                    url=mp4_variants[0]["url"]
+                    if mp4_variants
+                    else media_item.get("media_url_https", ""),
                     width=_deep_get(media_item, "original_info", "width"),
                     height=_deep_get(media_item, "original_info", "height"),
                 )
@@ -136,7 +138,9 @@ def _find_article_image_url(value):
                 if (
                     lowered.startswith("https://pbs.twimg.com/")
                     or lowered.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))
-                    or any(ext in lowered for ext in (".jpg?", ".jpeg?", ".png?", ".gif?", ".webp?"))
+                    or any(
+                        ext in lowered for ext in (".jpg?", ".jpeg?", ".png?", ".gif?", ".webp?")
+                    )
                 ):
                     return candidate.strip()
         for nested in value.values():
@@ -249,7 +253,7 @@ def _render_article_text_block(block, entity_map):
     for offset, length, url in sorted(ranges, reverse=True):
         if offset < 0 or offset + length > len(rendered):
             continue
-        label = rendered[offset:offset + length]
+        label = rendered[offset : offset + length]
         if not label:
             continue
         # Escape markdown special chars: ] in labels and ) in URLs
@@ -259,7 +263,7 @@ def _render_article_text_block(block, entity_map):
             rendered[:offset],
             safe_label,
             safe_url,
-            rendered[offset + length:],
+            rendered[offset + length :],
         )
     return rendered
 
@@ -283,6 +287,7 @@ def _find_article_caption(value):
             if found:
                 return found
     return None
+
 
 def _extract_article_images(block, entity_map, media_url_map):
     # type: (Dict[str, Any], Dict[str, Any], Dict[str, str]) -> List[str]
@@ -308,6 +313,8 @@ def _extract_article_images(block, entity_map, media_url_map):
         caption = _find_article_caption(entity) or ""
         parts.append("![%s](%s)" % (caption, image_url))
     return parts
+
+
 def _parse_article(tweet_data):
     # type: (Dict[str, Any]) -> Dict[str, Any]
     """Extract Twitter Article data (long-form content) from a tweet.
@@ -452,7 +459,9 @@ def parse_tweet_result(result, depth=0):
             actual_user_legacy = actual_user.get("legacy", {})
 
     media = _extract_media(actual_legacy)
-    urls = [item.get("expanded_url", "") for item in _deep_get(actual_legacy, "entities", "urls") or []]
+    urls = [
+        item.get("expanded_url", "") for item in _deep_get(actual_legacy, "entities", "urls") or []
+    ]
     quoted = _deep_get(actual_data, "quoted_status_result", "result")
     quoted_tweet = parse_tweet_result(quoted, depth=depth + 1) if isinstance(quoted, dict) else None
     author = _extract_author(actual_user, actual_user_legacy)
@@ -483,7 +492,9 @@ def parse_tweet_result(result, depth=0):
         retweeted_by=retweeted_by,
         quoted_tweet=quoted_tweet,
         lang=actual_legacy.get("lang", ""),
-        is_subscriber_only=(is_subscriber_only or retweet_subscriber_only) if is_retweet else is_subscriber_only,
+        is_subscriber_only=(is_subscriber_only or retweet_subscriber_only)
+        if is_retweet
+        else is_subscriber_only,
         **_parse_article(actual_data),
     )
 

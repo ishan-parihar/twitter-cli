@@ -48,6 +48,7 @@ DEFAULT_OAUTH1_CONSUMER_SECRET = os.environ.get("TWITTER_OAUTH1_CONSUMER_SECRET"
 @dataclass
 class OAuth1Tokens:
     """OAuth 1.0a tokens."""
+
     oauth_token: str
     oauth_token_secret: str
     screen_name: str = ""
@@ -58,6 +59,7 @@ class OAuth1Tokens:
 @dataclass
 class OAuth2Tokens:
     """OAuth 2.0 tokens with PKCE."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -69,6 +71,7 @@ class OAuth2Tokens:
 @dataclass
 class AppOnlyToken:
     """App-only bearer token."""
+
     access_token: str
     token_type: str = "bearer"
     expires_in: int = 7200
@@ -78,6 +81,7 @@ class AppOnlyToken:
 @dataclass
 class StoredTokens:
     """All stored token types."""
+
     oauth1: OAuth1Tokens | None = None
     oauth2: OAuth2Tokens | None = None
     app_only: AppOnlyToken | None = None
@@ -150,7 +154,9 @@ class OAuthManager:
     def oauth1_get_request_token(self) -> tuple[str, str]:
         """Get OAuth1 request token. Returns (oauth_token, oauth_token_secret)."""
         if not self.oauth1_consumer_key or not self.oauth1_consumer_secret:
-            raise ValueError("OAuth1 consumer key/secret not configured. Set TWITTER_OAUTH1_CONSUMER_KEY and TWITTER_OAUTH1_CONSUMER_SECRET")
+            raise ValueError(
+                "OAuth1 consumer key/secret not configured. Set TWITTER_OAUTH1_CONSUMER_KEY and TWITTER_OAUTH1_CONSUMER_SECRET"
+            )
 
         oauth = OAuth1Session(
             self.oauth1_consumer_key,
@@ -227,9 +233,13 @@ class OAuthManager:
         code_verifier = secrets.token_urlsafe(32)
         import base64
         import hashlib
-        code_challenge = base64.urlsafe_b64encode(
-            hashlib.sha256(code_verifier.encode()).digest()
-        ).decode().rstrip("=")
+
+        code_challenge = (
+            base64
+            .urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest())
+            .decode()
+            .rstrip("=")
+        )
         return code_verifier, code_challenge
 
     def oauth2_get_authorize_url(
@@ -253,12 +263,12 @@ class OAuthManager:
         }
         return f"{OAUTH2_AUTHORIZE_URL}?{urllib.parse.urlencode(params)}"
 
-    def oauth2_exchange_code(
-        self, code: str, code_verifier: str
-    ) -> OAuth2Tokens:
+    def oauth2_exchange_code(self, code: str, code_verifier: str) -> OAuth2Tokens:
         """Exchange authorization code for tokens."""
         if not self.oauth2_client_id or not self.oauth2_client_secret:
-            raise ValueError("OAuth2 client ID/secret not configured. Set TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET")
+            raise ValueError(
+                "OAuth2 client ID/secret not configured. Set TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET"
+            )
 
         data = {
             "grant_type": "authorization_code",
@@ -313,10 +323,14 @@ class OAuthManager:
             created_at=time.time(),
         )
 
-    def oauth2_run_flow(self, scope: str = "tweet.read tweet.write users.read offline.access") -> OAuth2Tokens:
+    def oauth2_run_flow(
+        self, scope: str = "tweet.read tweet.write users.read offline.access"
+    ) -> OAuth2Tokens:
         """Run complete OAuth2 PKCE flow interactively."""
         if not self.oauth2_client_id or not self.oauth2_client_secret:
-            raise ValueError("OAuth2 client ID/secret not configured. Set TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET")
+            raise ValueError(
+                "OAuth2 client ID/secret not configured. Set TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET"
+            )
 
         print("🔐 OAuth 2.0 (PKCE) Authentication Flow")
         print("=" * 50)
@@ -357,7 +371,9 @@ class OAuthManager:
     def app_only_get_token(self) -> AppOnlyToken:
         """Get app-only bearer token using client credentials."""
         if not self.oauth2_client_id or not self.oauth2_client_secret:
-            raise ValueError("OAuth2 client ID/secret not configured. Set TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET")
+            raise ValueError(
+                "OAuth2 client ID/secret not configured. Set TWITTER_OAUTH2_CLIENT_ID and TWITTER_OAUTH2_CLIENT_SECRET"
+            )
 
         data = {"grant_type": "client_credentials"}
         auth = (self.oauth2_client_id, self.oauth2_client_secret)

@@ -39,7 +39,7 @@
 
   <!-- Title area -->
   <text id="hero-title" x="80" y="110" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="48" font-weight="700" fill="#f0f6fc" letter-spacing="-0.5px">
-    twitter-cli
+    twitter-lyr
   </text>
 
   <!-- Badge row -->
@@ -84,13 +84,13 @@
     <text x="20" y="84" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="12" fill="#58a6ff">✅ Fetched 20 tweets from following feed in 1.2s</text>
 
     <text x="20" y="106" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="13" fill="#8b949e">$</text>
-    <text x="36" y="106" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="13" fill="#f0f6fc">twitter post "Hello from twitter-cli!" --yaml</text>
+    <text x="36" y="106" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="13" fill="#f0f6fc">twitter post "Hello from twitter-lyr!" --yaml</text>
 
     <text x="20" y="128" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="12" fill="#3fb950">ok: true</text>
     <text x="20" y="144" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="12" fill="#8b949e">data:</text>
     <text x="40" y="144" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="12" fill="#c9d1d9">id: "1234567890"</text>
     <text x="40" y="160" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="12" fill="#c9d1d9">author: "@ishanparihar"</text>
-    <text x="40" y="176" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="12" fill="#c9d1d9">text: "Hello from twitter-cli!"</text>
+    <text x="40" y="176" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="12" fill="#c9d1d9">text: "Hello from twitter-lyr!"</text>
   </g>
 
   <!-- Right side: feature icons -->
@@ -135,7 +135,7 @@
   <!-- Bottom CTA -->
   <g transform="translate(80, 380)">
     <rect x="0" y="0" width="200" height="36" rx="6" fill="url(#accentGrad)"/>
-    <text x="100" y="24" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="600" fill="#0d1117" text-anchor="middle">uv tool install twitter-cli</text>
+    <text x="100" y="24" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="600" fill="#0d1117" text-anchor="middle">uv tool install twitter-lyr</text>
   </g>
 
   <g transform="translate(300, 380)">

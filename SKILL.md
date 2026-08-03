@@ -1,8 +1,8 @@
 ---
-name: twitter-cli
-description: Use twitter-cli for ALL Twitter/X operations — reading tweets, posting, replying, quoting, liking, retweeting, following, searching, user lookups. Invoke whenever user requests any Twitter interaction.
-author: jackwener
-version: "0.8.0"
+name: twitter-lyr
+description: Use twitter-lyr for ALL Twitter/X operations — reading tweets, posting, replying, quoting, liking, retweeting, following, searching, user lookups. Invoke whenever user requests any Twitter interaction.
+author: ishan-parihar
+version: "0.8.6"
 tags:
   - twitter
   - x
@@ -11,7 +11,7 @@ tags:
   - cli
 ---
 
-# twitter-cli — Twitter/X CLI Tool
+# twitter-lyr — Twitter/X CLI Tool
 
 **Binary:** `twitter`
 **Credentials:** browser cookies (auto-extracted) or env vars
@@ -20,17 +20,17 @@ tags:
 
 ```bash
 # Install (requires Python 3.8+)
-uv tool install twitter-cli
-# Or: pipx install twitter-cli
+uv tool install twitter-lyr
+# Or: pipx install twitter-lyr
 
 # Upgrade to latest (recommended to avoid API errors)
-uv tool upgrade twitter-cli
-# Or: pipx upgrade twitter-cli
+uv tool upgrade twitter-lyr
+# Or: pipx upgrade twitter-lyr
 ```
 
 ## Authentication
 
-**IMPORTANT FOR AGENTS**: Before executing ANY twitter-cli command, you MUST first check if credentials exist. If not, you MUST proactively guide the user through the authentication process. Do NOT assume credentials are configured.
+**IMPORTANT FOR AGENTS**: Before executing ANY twitter-lyr command, you MUST first check if credentials exist. If not, you MUST proactively guide the user through the authentication process. Do NOT assume credentials are configured.
 
 **CRITICAL**: Write operations (posting tweets, replying, quoting) REQUIRE full browser cookies. Only providing `auth_token` + `ct0` via env vars may result in **226 error** ("looks like automated behavior"). For best results, use browser cookie extraction.
 
@@ -47,7 +47,7 @@ If `AUTH_NEEDED`, proceed to guide the user:
 
 **Method A: Browser cookie extraction (recommended)**
 
-Ensure user is logged into x.com in one of: Arc, Chrome, Edge, Firefox, Brave. twitter-cli auto-extracts cookies.
+Ensure user is logged into x.com in one of: Arc, Chrome, Edge, Firefox, Brave. twitter-lyr auto-extracts cookies.
 All Chrome profiles are scanned automatically. To specify a profile: `TWITTER_CHROME_PROFILE="Profile 2" twitter feed`.
 To prioritize a specific browser: `TWITTER_BROWSER=chrome twitter feed` (supported: arc, chrome, edge, firefox, brave).
 
@@ -183,7 +183,7 @@ twitter following elonmusk --max 50    # Following
 ### Write Operations
 
 ```bash
-twitter post "Hello from twitter-cli!"              # Post tweet
+twitter post "Hello from twitter-lyr!"              # Post tweet
 twitter post "Hello!" --image photo.jpg              # Post with image
 twitter post "Gallery" -i a.png -i b.jpg             # Up to 4 images
 twitter reply 1234567890 "Great tweet!"              # Reply (standalone)

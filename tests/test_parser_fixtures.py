@@ -56,7 +56,9 @@ def test_parse_tweet_detail_fixture_with_nested_items(fixture_loader) -> None:
 
     tweets, cursor = parse_timeline_response(
         payload,
-        lambda data: _deep_get(data, "data", "threaded_conversation_with_injections_v2", "instructions"),
+        lambda data: _deep_get(
+            data, "data", "threaded_conversation_with_injections_v2", "instructions"
+        ),
     )
 
     assert [tweet.id for tweet in tweets] == ["100", "101"]
@@ -68,7 +70,9 @@ def test_parse_search_timeline_fixture_with_module_items(fixture_loader) -> None
 
     tweets, cursor = parse_timeline_response(
         payload,
-        lambda data: _deep_get(data, "data", "search_by_raw_query", "search_timeline", "timeline", "instructions"),
+        lambda data: _deep_get(
+            data, "data", "search_by_raw_query", "search_timeline", "timeline", "instructions"
+        ),
     )
 
     assert [tweet.id for tweet in tweets] == ["500"]
@@ -101,7 +105,9 @@ def test_fetch_user_list_with_fixture(monkeypatch, fixture_loader) -> None:
         "Followers",
         "user-id",
         20,
-        lambda data: _deep_get(data, "data", "user", "result", "timeline", "timeline", "instructions"),
+        lambda data: _deep_get(
+            data, "data", "user", "result", "timeline", "timeline", "instructions"
+        ),
     )
 
     assert len(users) == 1

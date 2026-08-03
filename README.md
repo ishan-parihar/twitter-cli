@@ -1,14 +1,12 @@
-# twitter-cli
+# twitter-lyr
 
-[![CI](https://github.com/ishan-parihar/twitter-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ishan-parihar/twitter-cli/actions/workflows/ci.yml)
-[![PyPI version](https://badge.fury.io/py/twitter-cli.svg)](https://pypi.org/project/twitter-cli/)
-[![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)](https://pypi.org/project/twitter-cli/)
+[![CI](https://github.com/ishan-parihar/twitter-lyr/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ishan-parihar/twitter-lyr/actions/workflows/ci.yml)
+[![PyPI version](https://badge.fury.io/py/twitter-lyr.svg)](https://pypi.org/project/twitter-lyr/)
+[![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)](https://pypi.org/project/twitter-lyr/)
 
-![twitter-cli hero](assets/readme/hero.svg)
+![twitter-lyr hero](assets/readme/hero.svg)
 
 A terminal-first CLI for Twitter/X: read timelines, search, post, manage DMs, and automate with structured output built for AI agents.
-
-> **Fork notice:** This is a fork of [jackwener/twitter-cli](https://github.com/jackwener/twitter-cli) with extensive AXI (Agent Experience Interface) compliance improvements, TOON output format, session hooks, contextual help, and agent-ready structured output.
 
 ---
 
@@ -16,16 +14,16 @@ A terminal-first CLI for Twitter/X: read timelines, search, post, manage DMs, an
 
 ```bash
 # Recommended: uv tool (fast, isolated)
-uv tool install twitter-cli
+uv tool install twitter-lyr
 
 # Alternative: pipx
-pipx install twitter-cli
+pipx install twitter-lyr
 ```
 
 Upgrade:
 ```bash
-uv tool upgrade twitter-cli
-# or: pipx upgrade twitter-cli
+uv tool upgrade twitter-lyr
+# or: pipx upgrade twitter-lyr
 ```
 
 > **Tip:** Upgrade regularly to avoid unexpected errors from Twitter API changes.
@@ -172,7 +170,7 @@ twitter user-posts elonmusk -o tweets.json
 ### Post / Interact
 ```bash
 # Post a tweet
-twitter post "Hello from twitter-cli!"
+twitter post "Hello from twitter-lyr!"
 
 # Post with images (up to 4)
 twitter post "Check this out" -i photo1.jpg -i photo2.png
@@ -299,7 +297,7 @@ twitter auth logout
 
 ## Agent Integration (AXI Compliant)
 
-twitter-cli is designed for AI agent workflows with AXI (Agent Experience Interface) compliance:
+twitter-lyr is designed for AI agent workflows with AXI (Agent Experience Interface) compliance:
 
 | Feature | Description |
 |---------|-------------|
@@ -350,7 +348,7 @@ twitter session-install --shell bash
 
 ## Configuration
 
-Create `~/.config/twitter-cli/config.yaml`:
+Create `~/.config/twitter-lyr/config.yaml`:
 
 ```yaml
 fetch:

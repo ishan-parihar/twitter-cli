@@ -44,7 +44,8 @@ def get_user_agent():
 def get_sec_ch_ua():
     # type: () -> str
     return '"Chromium";v="%s", "Not(A:Brand";v="99", "Google Chrome";v="%s"' % (
-        _chrome_version, _chrome_version,
+        _chrome_version,
+        _chrome_version,
     )
 
 
@@ -56,7 +57,8 @@ def get_sec_ch_ua_full_version():
 def get_sec_ch_ua_full_version_list():
     # type: () -> str
     return '"Google Chrome";v="%s.0.0.0", "Chromium";v="%s.0.0.0", "Not.A/Brand";v="99.0.0.0"' % (
-        _chrome_version, _chrome_version,
+        _chrome_version,
+        _chrome_version,
     )
 
 

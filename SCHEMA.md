@@ -1,6 +1,6 @@
 # Structured Output Schema
 
-`twitter-cli` uses a shared agent-friendly envelope for machine-readable output.
+`twitter-lyr` uses a shared agent-friendly envelope for machine-readable output.
 
 ## Success
 

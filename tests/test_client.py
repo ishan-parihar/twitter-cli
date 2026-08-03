@@ -37,6 +37,7 @@ from twitter_cli.parser import (
 
 # ── _deep_get ────────────────────────────────────────────────────────────
 
+
 class TestDeepGet:
     def test_nested_dict(self):
         data = {"a": {"b": {"c": 42}}}
@@ -66,6 +67,7 @@ class TestDeepGet:
 
 # ── _parse_int ───────────────────────────────────────────────────────────
 
+
 class TestParseInt:
     def test_normal_int(self):
         assert _parse_int(42, 0) == 42
@@ -91,6 +93,7 @@ class TestParseInt:
 
 # ── _extract_cursor ──────────────────────────────────────────────────────
 
+
 class TestExtractCursor:
     def test_bottom_cursor(self):
         content = {"cursorType": "Bottom", "value": "cursor_abc"}
@@ -105,6 +108,7 @@ class TestExtractCursor:
 
 
 # ── _extract_media ───────────────────────────────────────────────────────
+
 
 class TestExtractMedia:
     def test_photo(self):
@@ -135,9 +139,20 @@ class TestExtractMedia:
                         "original_info": {"width": 1920, "height": 1080},
                         "video_info": {
                             "variants": [
-                                {"content_type": "video/mp4", "bitrate": 832000, "url": "https://low.mp4"},
-                                {"content_type": "video/mp4", "bitrate": 2176000, "url": "https://high.mp4"},
-                                {"content_type": "application/x-mpegURL", "url": "https://stream.m3u8"},
+                                {
+                                    "content_type": "video/mp4",
+                                    "bitrate": 832000,
+                                    "url": "https://low.mp4",
+                                },
+                                {
+                                    "content_type": "video/mp4",
+                                    "bitrate": 2176000,
+                                    "url": "https://high.mp4",
+                                },
+                                {
+                                    "content_type": "application/x-mpegURL",
+                                    "url": "https://stream.m3u8",
+                                },
                             ]
                         },
                     }
@@ -162,7 +177,11 @@ class TestExtractMedia:
                         "original_info": {"width": 480, "height": 270},
                         "video_info": {
                             "variants": [
-                                {"content_type": "video/mp4", "bitrate": 0, "url": "https://gif.mp4"},
+                                {
+                                    "content_type": "video/mp4",
+                                    "bitrate": 0,
+                                    "url": "https://gif.mp4",
+                                },
                             ]
                         },
                     }
@@ -175,6 +194,7 @@ class TestExtractMedia:
 
 
 # ── _build_graphql_url ───────────────────────────────────────────────────
+
 
 class TestBuildGraphqlUrl:
     def test_basic_url(self):
@@ -198,8 +218,14 @@ class TestBuildGraphqlUrl:
     def test_url_length_with_full_features(self):
         """URL with full FEATURES dict should stay under 8000 chars (server limit)."""
         url = _build_graphql_url(
-            "abc123", "SearchTimeline",
-            {"rawQuery": "AI agent", "querySource": "typed_query", "product": "Latest", "count": 50},
+            "abc123",
+            "SearchTimeline",
+            {
+                "rawQuery": "AI agent",
+                "querySource": "typed_query",
+                "product": "Latest",
+                "count": 50,
+            },
             FEATURES,
         )
         assert len(url) < 8000, f"URL too long: {len(url)} chars"
@@ -211,6 +237,7 @@ class TestBuildGraphqlUrl:
 
 # ── _best_chrome_target ──────────────────────────────────────────────────
 
+
 class TestBestChromeTarget:
     def test_returns_string(self):
         target = _best_chrome_target()
@@ -218,7 +245,10 @@ class TestBestChromeTarget:
         assert "chrome" in target
 
     def test_fallback_when_no_browser_type(self):
-        with patch.dict("sys.modules", {"curl_cffi.requests": MagicMock(BrowserType=MagicMock(side_effect=TypeError))}):
+        with patch.dict(
+            "sys.modules",
+            {"curl_cffi.requests": MagicMock(BrowserType=MagicMock(side_effect=TypeError))},
+        ):
             # Force re-evaluation by clearing cached result
             # When BrowserType iteration fails, should still return a fallback
             target = _best_chrome_target()
@@ -226,6 +256,7 @@ class TestBestChromeTarget:
 
 
 # ── _update_features_from_html ───────────────────────────────────────────
+
 
 class TestUpdateFeaturesFromHtml:
     def test_updates_existing_feature_flags(self):
@@ -262,6 +293,7 @@ class TestUpdateFeaturesFromHtml:
 
 
 # ── TwitterClient._build_headers ─────────────────────────────────────────
+
 
 class TestBuildHeaders:
     @patch("twitter_cli.client._get_cffi_session")
@@ -344,7 +376,7 @@ class TestPaginationBehavior:
 
         client._graphql_get = _graphql_get
 
-        with patch('twitter_cli.client.parse_timeline_response', return_value=([], None)):
+        with patch("twitter_cli.client.parse_timeline_response", return_value=([], None)):
             client._fetch_timeline("HomeTimeline", 1, lambda data: data, include_promoted=True)
 
         assert calls[0]["includePromotedContent"] is True
@@ -354,12 +386,10 @@ class TestPaginationBehavior:
         client._request_delay = 0.0
         client._max_count = 200
 
-        responses = iter(
-            [
-                {"page": 1},
-                {"page": 2},
-            ]
-        )
+        responses = iter([
+            {"page": 1},
+            {"page": 2},
+        ])
 
         def _graphql_get(operation_name, variables, features, field_toggles=None):
             return next(responses)
@@ -371,7 +401,9 @@ class TestPaginationBehavior:
 
         client._graphql_get = _graphql_get
 
-        with patch('twitter_cli.client.parse_timeline_response', side_effect=_parse_timeline_response):
+        with patch(
+            "twitter_cli.client.parse_timeline_response", side_effect=_parse_timeline_response
+        ):
             tweets = client._fetch_timeline("HomeTimeline", 1, lambda data: data)
 
         assert [tweet.id for tweet in tweets] == ["tweet-1"]
@@ -389,7 +421,7 @@ class TestPaginationBehavior:
 
         client._graphql_get = _graphql_get
 
-        with patch('twitter_cli.client.parse_timeline_response', return_value=([], "cursor-same")):
+        with patch("twitter_cli.client.parse_timeline_response", return_value=([], "cursor-same")):
             tweets = client._fetch_timeline("HomeTimeline", 1, lambda data: data)
 
         assert tweets == []
@@ -409,7 +441,9 @@ class TestPaginationBehavior:
         client._graphql_get = _graphql_get
 
         tweet = MagicMock(id="tweet-1")
-        with patch('twitter_cli.client.parse_timeline_response', return_value=([tweet], "cursor-next")):
+        with patch(
+            "twitter_cli.client.parse_timeline_response", return_value=([tweet], "cursor-next")
+        ):
             tweets, cursor = client._fetch_timeline(
                 "HomeTimeline",
                 1,
@@ -436,7 +470,9 @@ class TestPaginationBehavior:
         client._graphql_get = _graphql_get
 
         tweet = MagicMock(id="tweet-1")
-        with patch('twitter_cli.client.parse_timeline_response', return_value=([tweet], "cursor-next")):
+        with patch(
+            "twitter_cli.client.parse_timeline_response", return_value=([tweet], "cursor-next")
+        ):
             tweets, cursor = client.fetch_list_timeline(
                 "list-1",
                 1,
@@ -455,12 +491,10 @@ class TestPaginationBehavior:
         client._request_delay = 0.0
         client._max_count = 200
 
-        responses = iter(
-            [
-                {"page": 1},
-                {"page": 2},
-            ]
-        )
+        responses = iter([
+            {"page": 1},
+            {"page": 2},
+        ])
 
         def _graphql_get(operation_name, variables, features):
             return next(responses)
@@ -471,7 +505,17 @@ class TestPaginationBehavior:
         def _get_instructions(data):
             if data["page"] == 1:
                 return [
-                    {"entries": [{"content": {"entryType": "TimelineTimelineCursor", "cursorType": "Bottom", "value": "cursor-2"}}]}
+                    {
+                        "entries": [
+                            {
+                                "content": {
+                                    "entryType": "TimelineTimelineCursor",
+                                    "cursorType": "Bottom",
+                                    "value": "cursor-2",
+                                }
+                            }
+                        ]
+                    }
                 ]
             return [
                 {
@@ -479,7 +523,11 @@ class TestPaginationBehavior:
                         {
                             "content": {
                                 "entryType": "TimelineTimelineItem",
-                                "itemContent": {"user_results": {"result": {"id": "user-1", "screen_name": "alice"}}},
+                                "itemContent": {
+                                    "user_results": {
+                                        "result": {"id": "user-1", "screen_name": "alice"}
+                                    }
+                                },
                             }
                         }
                     ]
@@ -488,13 +536,14 @@ class TestPaginationBehavior:
 
         client._graphql_get = _graphql_get
 
-        with patch('twitter_cli.client.parse_user_result', side_effect=_parse_user_result):
+        with patch("twitter_cli.client.parse_user_result", side_effect=_parse_user_result):
             users = client._fetch_user_list("Followers", "1", 1, _get_instructions)
 
         assert [user.screen_name for user in users] == ["alice"]
 
 
 # ── Article parsing helpers ───────────────────────────────────────────────
+
 
 class TestNormalizeArticleEntityMap:
     def test_accepts_dict_entity_map(self):
@@ -529,7 +578,9 @@ class TestExtractAtomicMarkdown:
             "4": {"type": "MARKDOWN", "data": {"markdown": "```markdown\nconst answer = 42;\n```"}}
         }
 
-        assert _extract_atomic_markdown(block, entity_map) == ["```markdown\nconst answer = 42;\n```"]
+        assert _extract_atomic_markdown(block, entity_map) == [
+            "```markdown\nconst answer = 42;\n```"
+        ]
 
     def test_ignores_non_markdown_entities(self):
         block = {"entityRanges": [{"key": 0}, {"key": 1}]}
@@ -572,7 +623,10 @@ class TestRenderArticleTextBlock:
         assert _render_article_text_block({"text": None, "entityRanges": []}, {}) == ""
 
     def test_ignores_non_dict_entity_ranges(self):
-        block = {"text": "Intro", "entityRanges": [None, "bad", {"key": 0, "offset": 0, "length": 5}]}
+        block = {
+            "text": "Intro",
+            "entityRanges": [None, "bad", {"key": 0, "offset": 0, "length": 5}],
+        }
         entity_map = {"0": {"type": "LINK", "data": {"url": "https://example.com"}}}
 
         assert _render_article_text_block(block, entity_map) == "[Intro](https://example.com)"
@@ -626,7 +680,12 @@ class TestRenderArticleTextBlock:
 
     def test_encodes_parentheses_in_url(self):
         block = {"text": "see Wiki", "entityRanges": [{"key": 0, "offset": 4, "length": 4}]}
-        entity_map = {"0": {"type": "LINK", "data": {"url": "https://en.wikipedia.org/wiki/Rust_(programming_language)"}}}
+        entity_map = {
+            "0": {
+                "type": "LINK",
+                "data": {"url": "https://en.wikipedia.org/wiki/Rust_(programming_language)"},
+            }
+        }
 
         assert _render_article_text_block(block, entity_map) == (
             "see [Wiki](https://en.wikipedia.org/wiki/Rust_(programming_language%29)"
@@ -650,16 +709,33 @@ class TestParseArticle:
                         "title": "Article title",
                         "content_state": {
                             "blocks": [
-                                {"key": "a", "type": "unstyled", "text": "Intro", "entityRanges": []},
-                                {"key": "b", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 4}]},
-                                {"key": "c", "type": "unstyled", "text": "Outro", "entityRanges": []},
+                                {
+                                    "key": "a",
+                                    "type": "unstyled",
+                                    "text": "Intro",
+                                    "entityRanges": [],
+                                },
+                                {
+                                    "key": "b",
+                                    "type": "atomic",
+                                    "text": " ",
+                                    "entityRanges": [{"offset": 0, "length": 1, "key": 4}],
+                                },
+                                {
+                                    "key": "c",
+                                    "type": "unstyled",
+                                    "text": "Outro",
+                                    "entityRanges": [],
+                                },
                             ],
                             "entityMap": [
                                 {
                                     "key": "4",
                                     "value": {
                                         "type": "MARKDOWN",
-                                        "data": {"markdown": "```markdown\nconst answer = 42;\n```"},
+                                        "data": {
+                                            "markdown": "```markdown\nconst answer = 42;\n```"
+                                        },
                                     },
                                 }
                             ],
@@ -684,25 +760,54 @@ class TestParseArticle:
                         "title": "I want to become a Claude architect (full course).",
                         "content_state": {
                             "blocks": [
-                                {"key": "a", "type": "unstyled", "text": "If you have no idea how to get started go to Claude and paste this prompt which will help you with domain 1:", "entityRanges": []},
-                                {"key": "b", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 4}]},
-                                {"key": "c", "type": "unstyled", "text": "What to build to learn: A multi-tool agent with 3-4 MCP tools.", "entityRanges": []},
-                                {"key": "d", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 5}]},
-                                {"key": "e", "type": "unstyled", "text": "Done.", "entityRanges": []},
+                                {
+                                    "key": "a",
+                                    "type": "unstyled",
+                                    "text": "If you have no idea how to get started go to Claude and paste this prompt which will help you with domain 1:",
+                                    "entityRanges": [],
+                                },
+                                {
+                                    "key": "b",
+                                    "type": "atomic",
+                                    "text": " ",
+                                    "entityRanges": [{"offset": 0, "length": 1, "key": 4}],
+                                },
+                                {
+                                    "key": "c",
+                                    "type": "unstyled",
+                                    "text": "What to build to learn: A multi-tool agent with 3-4 MCP tools.",
+                                    "entityRanges": [],
+                                },
+                                {
+                                    "key": "d",
+                                    "type": "atomic",
+                                    "text": " ",
+                                    "entityRanges": [{"offset": 0, "length": 1, "key": 5}],
+                                },
+                                {
+                                    "key": "e",
+                                    "type": "unstyled",
+                                    "text": "Done.",
+                                    "entityRanges": [],
+                                },
                             ],
                             "entityMap": [
                                 {
                                     "key": "4",
                                     "value": {
                                         "type": "MARKDOWN",
-                                        "data": {"markdown": "```markdown\nYou are an expert instructor teaching Domain 1.\n```"},
+                                        "data": {
+                                            "markdown": "```markdown\nYou are an expert instructor teaching Domain 1.\n```"
+                                        },
                                     },
                                 },
                                 {
                                     "key": "5",
                                     "value": {
                                         "type": "MARKDOWN",
-                                        "data": {"markdown": "```markdown\nBest for: predictable, structured tasks like code reviews.\n```"},
+                                        "data": {
+                                            "markdown": "```markdown\nBest for: predictable, structured tasks like code reviews.\n```"
+                                        },
                                     },
                                 },
                             ],
@@ -733,7 +838,12 @@ class TestParseArticle:
                         "title": "Mixed article",
                         "content_state": {
                             "blocks": [
-                                {"key": "a", "type": "unstyled", "text": "Intro", "entityRanges": []},
+                                {
+                                    "key": "a",
+                                    "type": "unstyled",
+                                    "text": "Intro",
+                                    "entityRanges": [],
+                                },
                                 {
                                     "key": "b",
                                     "type": "atomic",
@@ -746,21 +856,30 @@ class TestParseArticle:
                                     "text": " ",
                                     "entityRanges": [{"offset": 0, "length": 1, "key": 5}],
                                 },
-                                {"key": "d", "type": "unstyled", "text": "Outro", "entityRanges": []},
+                                {
+                                    "key": "d",
+                                    "type": "unstyled",
+                                    "text": "Outro",
+                                    "entityRanges": [],
+                                },
                             ],
                             "entityMap": [
                                 {
                                     "key": "4",
                                     "value": {
                                         "type": "MARKDOWN",
-                                        "data": {"markdown": "```markdown\nconst answer = 42;\n```"},
+                                        "data": {
+                                            "markdown": "```markdown\nconst answer = 42;\n```"
+                                        },
                                     },
                                 },
                                 {
                                     "key": "5",
                                     "value": {
                                         "type": "MEDIA",
-                                        "data": {"mediaItems": [{"mediaId": "2030504404391194624"}]},
+                                        "data": {
+                                            "mediaItems": [{"mediaId": "2030504404391194624"}]
+                                        },
                                     },
                                 },
                             ],
@@ -841,6 +960,7 @@ class TestParseArticle:
 
 
 # ── TwitterClient._parse_tweet_result ─────────────────────────────────────
+
 
 class TestParseTweetResult:
     SAMPLE_TWEET_RESULT = {
@@ -1025,7 +1145,12 @@ class TestParseTweetResult:
                     "content_state": {
                         "blocks": [
                             {"key": "a", "type": "unstyled", "text": "Intro", "entityRanges": []},
-                            {"key": "b", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 0}]},
+                            {
+                                "key": "b",
+                                "type": "atomic",
+                                "text": " ",
+                                "entityRanges": [{"offset": 0, "length": 1, "key": 0}],
+                            },
                             {"key": "c", "type": "unstyled", "text": "Outro", "entityRanges": []},
                         ],
                         "entityMap": {
@@ -1046,11 +1171,15 @@ class TestParseTweetResult:
         tweet = parse_tweet_result(result)
         assert tweet is not None
         assert tweet.article_title == "Article title"
-        assert tweet.article_text == "Intro\n\n![A cat](https://pbs.twimg.com/media/cat.jpg)\n\nOutro"
+        assert (
+            tweet.article_text == "Intro\n\n![A cat](https://pbs.twimg.com/media/cat.jpg)\n\nOutro"
+        )
 
     @patch("twitter_cli.client._get_cffi_session")
     @patch("twitter_cli.client._gen_ct_headers", return_value={})
-    def test_article_atomic_image_block_supports_list_entity_map_and_media_entities(self, mock_ct_headers, mock_session):
+    def test_article_atomic_image_block_supports_list_entity_map_and_media_entities(
+        self, mock_ct_headers, mock_session
+    ):
         mock_session.return_value = MagicMock()
         mock_session.return_value.get = MagicMock(side_effect=Exception("skip"))
 
@@ -1066,11 +1195,22 @@ class TestParseTweetResult:
                     "content_state": {
                         "blocks": [
                             {"key": "a", "type": "unstyled", "text": "Intro", "entityRanges": []},
-                            {"key": "b", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 2}]},
+                            {
+                                "key": "b",
+                                "type": "atomic",
+                                "text": " ",
+                                "entityRanges": [{"offset": 0, "length": 1, "key": 2}],
+                            },
                             {"key": "c", "type": "unstyled", "text": "Outro", "entityRanges": []},
                         ],
                         "entityMap": [
-                            {"key": "2", "value": {"type": "MEDIA", "data": {"mediaItems": [{"mediaId": "2030504404391194624"}]}}}
+                            {
+                                "key": "2",
+                                "value": {
+                                    "type": "MEDIA",
+                                    "data": {"mediaItems": [{"mediaId": "2030504404391194624"}]},
+                                },
+                            }
                         ],
                     },
                     "media_entities": [
@@ -1087,11 +1227,15 @@ class TestParseTweetResult:
 
         tweet = parse_tweet_result(result)
         assert tweet is not None
-        assert tweet.article_text == "Intro\n\n![](https://pbs.twimg.com/media/example.png)\n\nOutro"
+        assert (
+            tweet.article_text == "Intro\n\n![](https://pbs.twimg.com/media/example.png)\n\nOutro"
+        )
 
     @patch("twitter_cli.client._get_cffi_session")
     @patch("twitter_cli.client._gen_ct_headers", return_value={})
-    def test_article_real_shape_odysseus_like_payload_renders_two_images(self, mock_ct_headers, mock_session):
+    def test_article_real_shape_odysseus_like_payload_renders_two_images(
+        self, mock_ct_headers, mock_session
+    ):
         mock_session.return_value = MagicMock()
         mock_session.return_value.get = MagicMock(side_effect=Exception("skip"))
 
@@ -1106,15 +1250,52 @@ class TestParseTweetResult:
                     "title": "Harness Engineering Is Cybernetics",
                     "content_state": {
                         "blocks": [
-                            {"key": "a", "type": "unstyled", "text": "First paragraph", "entityRanges": []},
-                            {"key": "b", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 2}]},
-                            {"key": "c", "type": "unstyled", "text": "Middle paragraph", "entityRanges": []},
-                            {"key": "d", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 5}]},
-                            {"key": "e", "type": "unstyled", "text": "Last paragraph", "entityRanges": []},
+                            {
+                                "key": "a",
+                                "type": "unstyled",
+                                "text": "First paragraph",
+                                "entityRanges": [],
+                            },
+                            {
+                                "key": "b",
+                                "type": "atomic",
+                                "text": " ",
+                                "entityRanges": [{"offset": 0, "length": 1, "key": 2}],
+                            },
+                            {
+                                "key": "c",
+                                "type": "unstyled",
+                                "text": "Middle paragraph",
+                                "entityRanges": [],
+                            },
+                            {
+                                "key": "d",
+                                "type": "atomic",
+                                "text": " ",
+                                "entityRanges": [{"offset": 0, "length": 1, "key": 5}],
+                            },
+                            {
+                                "key": "e",
+                                "type": "unstyled",
+                                "text": "Last paragraph",
+                                "entityRanges": [],
+                            },
                         ],
                         "entityMap": [
-                            {"key": "5", "value": {"type": "MEDIA", "data": {"mediaItems": [{"mediaId": "2030414996266741760"}]}}},
-                            {"key": "2", "value": {"type": "MEDIA", "data": {"mediaItems": [{"mediaId": "2030504404391194624"}]}}},
+                            {
+                                "key": "5",
+                                "value": {
+                                    "type": "MEDIA",
+                                    "data": {"mediaItems": [{"mediaId": "2030414996266741760"}]},
+                                },
+                            },
+                            {
+                                "key": "2",
+                                "value": {
+                                    "type": "MEDIA",
+                                    "data": {"mediaItems": [{"mediaId": "2030504404391194624"}]},
+                                },
+                            },
                         ],
                     },
                     "media_entities": [
@@ -1147,7 +1328,9 @@ class TestParseTweetResult:
 
     @patch("twitter_cli.client._get_cffi_session")
     @patch("twitter_cli.client._gen_ct_headers", return_value={})
-    def test_article_real_shape_elvissun_like_payload_renders_caption_and_three_images(self, mock_ct_headers, mock_session):
+    def test_article_real_shape_elvissun_like_payload_renders_caption_and_three_images(
+        self, mock_ct_headers, mock_session
+    ):
         mock_session.return_value = MagicMock()
         mock_session.return_value.get = MagicMock(side_effect=Exception("skip"))
 
@@ -1163,11 +1346,36 @@ class TestParseTweetResult:
                     "content_state": {
                         "blocks": [
                             {"key": "a", "type": "unstyled", "text": "Intro", "entityRanges": []},
-                            {"key": "b", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 0}]},
-                            {"key": "c", "type": "unstyled", "text": "Diagram intro", "entityRanges": []},
-                            {"key": "d", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 1}]},
-                            {"key": "e", "type": "unstyled", "text": "Context comparison", "entityRanges": []},
-                            {"key": "f", "type": "atomic", "text": " ", "entityRanges": [{"offset": 0, "length": 1, "key": 2}]},
+                            {
+                                "key": "b",
+                                "type": "atomic",
+                                "text": " ",
+                                "entityRanges": [{"offset": 0, "length": 1, "key": 0}],
+                            },
+                            {
+                                "key": "c",
+                                "type": "unstyled",
+                                "text": "Diagram intro",
+                                "entityRanges": [],
+                            },
+                            {
+                                "key": "d",
+                                "type": "atomic",
+                                "text": " ",
+                                "entityRanges": [{"offset": 0, "length": 1, "key": 1}],
+                            },
+                            {
+                                "key": "e",
+                                "type": "unstyled",
+                                "text": "Context comparison",
+                                "entityRanges": [],
+                            },
+                            {
+                                "key": "f",
+                                "type": "atomic",
+                                "text": " ",
+                                "entityRanges": [{"offset": 0, "length": 1, "key": 2}],
+                            },
                         ],
                         "entityMap": [
                             {
@@ -1180,8 +1388,20 @@ class TestParseTweetResult:
                                     },
                                 },
                             },
-                            {"key": "1", "value": {"type": "MEDIA", "data": {"mediaItems": [{"mediaId": "2025790010293669888"}]}}},
-                            {"key": "2", "value": {"type": "MEDIA", "data": {"mediaItems": [{"mediaId": "2025780043406864384"}]}}},
+                            {
+                                "key": "1",
+                                "value": {
+                                    "type": "MEDIA",
+                                    "data": {"mediaItems": [{"mediaId": "2025790010293669888"}]},
+                                },
+                            },
+                            {
+                                "key": "2",
+                                "value": {
+                                    "type": "MEDIA",
+                                    "data": {"mediaItems": [{"mediaId": "2025780043406864384"}]},
+                                },
+                            },
                         ],
                     },
                     "media_entities": [
@@ -1220,8 +1440,8 @@ class TestParseTweetResult:
         )
 
 
-
 # ── TwitterAPIError ──────────────────────────────────────────────────────
+
 
 class TestTwitterAPIError:
     def test_stores_status_code(self):
@@ -1236,19 +1456,17 @@ class TestTwitterAPIError:
 
 class TestParseUserResult:
     def test_coerces_count_fields_to_int(self):
-        user = parse_user_result(
-            {
-                "rest_id": "user-1",
-                "legacy": {
-                    "name": "Alice",
-                    "screen_name": "alice",
-                    "followers_count": "1,234",
-                    "friends_count": "56",
-                    "statuses_count": "78.9",
-                    "favourites_count": None,
-                },
-            }
-        )
+        user = parse_user_result({
+            "rest_id": "user-1",
+            "legacy": {
+                "name": "Alice",
+                "screen_name": "alice",
+                "followers_count": "1,234",
+                "friends_count": "56",
+                "statuses_count": "78.9",
+                "favourites_count": None,
+            },
+        })
 
         assert user is not None
         assert user.followers_count == 1234
@@ -1260,19 +1478,17 @@ class TestParseUserResult:
         """New API shape: name/screen_name/created_at moved to core{},
         profile_image_url to avatar.image_url, location to location.location.
         legacy{} may be empty or missing entirely."""
-        user = parse_user_result(
-            {
-                "rest_id": "user-2",
-                "core": {
-                    "name": "Bob",
-                    "screen_name": "bob",
-                    "created_at": "Tue Mar 21 17:25:43 +0000 2023",
-                },
-                "avatar": {"image_url": "https://example.com/bob.jpg"},
-                "location": {"location": "Earth"},
-                "is_blue_verified": True,
-            }
-        )
+        user = parse_user_result({
+            "rest_id": "user-2",
+            "core": {
+                "name": "Bob",
+                "screen_name": "bob",
+                "created_at": "Tue Mar 21 17:25:43 +0000 2023",
+            },
+            "avatar": {"image_url": "https://example.com/bob.jpg"},
+            "location": {"location": "Earth"},
+            "is_blue_verified": True,
+        })
 
         assert user is not None
         assert user.id == "user-2"
@@ -1285,19 +1501,17 @@ class TestParseUserResult:
 
     def test_prefers_core_over_legacy_when_both_present(self):
         """During the migration both shapes coexist — core{} should win."""
-        user = parse_user_result(
-            {
-                "rest_id": "user-3",
-                "core": {"name": "NewName", "screen_name": "new_handle"},
-                "avatar": {"image_url": "https://example.com/new.jpg"},
-                "legacy": {
-                    "name": "OldName",
-                    "screen_name": "old_handle",
-                    "profile_image_url_https": "https://example.com/old.jpg",
-                    "description": "old bio",
-                },
-            }
-        )
+        user = parse_user_result({
+            "rest_id": "user-3",
+            "core": {"name": "NewName", "screen_name": "new_handle"},
+            "avatar": {"image_url": "https://example.com/new.jpg"},
+            "legacy": {
+                "name": "OldName",
+                "screen_name": "old_handle",
+                "profile_image_url_https": "https://example.com/old.jpg",
+                "description": "old bio",
+            },
+        })
 
         assert user is not None
         assert user.name == "NewName"
@@ -1308,18 +1522,16 @@ class TestParseUserResult:
 
     def test_falls_back_to_legacy_when_core_missing(self):
         """Older response shape with only legacy{} — keep working."""
-        user = parse_user_result(
-            {
-                "rest_id": "user-4",
-                "legacy": {
-                    "name": "Carol",
-                    "screen_name": "carol",
-                    "profile_image_url_https": "https://example.com/carol.jpg",
-                    "location": "Mars",
-                    "created_at": "Mon Jan 01 00:00:00 +0000 2020",
-                },
-            }
-        )
+        user = parse_user_result({
+            "rest_id": "user-4",
+            "legacy": {
+                "name": "Carol",
+                "screen_name": "carol",
+                "profile_image_url_https": "https://example.com/carol.jpg",
+                "location": "Mars",
+                "created_at": "Mon Jan 01 00:00:00 +0000 2020",
+            },
+        })
 
         assert user is not None
         assert user.name == "Carol"
@@ -1335,12 +1547,11 @@ class TestParseUserResult:
         assert parse_user_result({}) is None
 
     def test_returns_none_for_user_unavailable(self):
-        assert (
-            parse_user_result({"__typename": "UserUnavailable", "rest_id": "x"}) is None
-        )
+        assert parse_user_result({"__typename": "UserUnavailable", "rest_id": "x"}) is None
 
 
 # ── upload_media ─────────────────────────────────────────────────────────
+
 
 class TestUploadMedia:
     """Tests for TwitterClient.upload_media()."""
@@ -1416,6 +1627,7 @@ class TestUploadMedia:
 
 # ── create_tweet with media_ids ──────────────────────────────────────────
 
+
 class TestCreateTweetWithMedia:
     """Tests that media_ids are correctly passed into CreateTweet variables."""
 
@@ -1482,6 +1694,7 @@ class TestCreateTweetWithMedia:
 
 # ── fetch_search uses POST ────────────────────────────────────────────────
 
+
 class TestFetchSearchUsesPost:
     """Verify that fetch_search routes through _graphql_post (not GET)."""
 
@@ -1507,7 +1720,11 @@ class TestFetchSearchUsesPost:
 
         def mock_post(operation_name, variables, features=None):
             post_calls.append((operation_name, variables))
-            return {"data": {"search_by_raw_query": {"search_timeline": {"timeline": {"instructions": []}}}}}
+            return {
+                "data": {
+                    "search_by_raw_query": {"search_timeline": {"timeline": {"instructions": []}}}
+                }
+            }
 
         def mock_get(operation_name, variables, features, field_toggles=None):  # pragma: no cover
             get_calls.append(operation_name)
@@ -1534,7 +1751,11 @@ class TestFetchSearchUsesPost:
 
         def mock_post(operation_name, variables, features=None):
             captured.update(variables)
-            return {"data": {"search_by_raw_query": {"search_timeline": {"timeline": {"instructions": []}}}}}
+            return {
+                "data": {
+                    "search_by_raw_query": {"search_timeline": {"timeline": {"instructions": []}}}
+                }
+            }
 
         client._graphql_post = mock_post
         client._graphql_get = lambda *a, **kw: {}  # pragma: no cover

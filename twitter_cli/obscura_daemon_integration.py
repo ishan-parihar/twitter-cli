@@ -22,7 +22,12 @@ class TwitterDaemonManager:
     def __init__(self, daemon_url: str = "http://127.0.0.1:9999"):
         self.daemon_url = daemon_url
         self._plugin: Optional[ObscuraPlugin] = None
-        self._use_daemon = os.getenv("TWITTER_USE_DAEMON", "true").lower() in ("1", "true", "yes", "on")
+        self._use_daemon = os.getenv("TWITTER_USE_DAEMON", "true").lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
 
     async def _get_plugin(self) -> ObscuraPlugin:
         """Get or create the ObscuraPlugin instance."""
@@ -37,6 +42,7 @@ class TwitterDaemonManager:
             logger.debug("Daemon integration disabled, falling back to local ObscuraCookieManager")
             # Import here to avoid circular imports
             from twitter_cli.obscura_integration import get_valid_twitter_cookies
+
             return await get_valid_twitter_cookies(force_refresh)
 
         try:
@@ -78,6 +84,7 @@ class TwitterDaemonManager:
             # Fall back to local ObscuraCookieManager
             logger.debug("Falling back to local ObscuraCookieManager")
             from twitter_cli.obscura_integration import get_valid_twitter_cookies
+
             return await get_valid_twitter_cookies(force_refresh)
 
     async def close(self) -> None:
@@ -99,7 +106,9 @@ def get_twitter_daemon_manager(daemon_url: str = "http://127.0.0.1:9999") -> Twi
     return _twitter_daemon_manager
 
 
-async def get_valid_twitter_cookies_from_daemon(force_refresh: bool = False) -> CookieValidationResult:
+async def get_valid_twitter_cookies_from_daemon(
+    force_refresh: bool = False,
+) -> CookieValidationResult:
     """Get valid Twitter/X cookies using Obscura Daemon plugin."""
     manager = get_twitter_daemon_manager()
     return await manager.get_valid_cookies(force_refresh)

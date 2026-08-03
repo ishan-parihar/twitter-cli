@@ -50,7 +50,10 @@ def test_filter_score_mode(tweet_factory) -> None:
     from twitter_cli.models import Metrics
 
     tweets = [
-        tweet_factory("high", metrics=Metrics(likes=1000, retweets=500, replies=200, views=100000, bookmarks=50)),
+        tweet_factory(
+            "high",
+            metrics=Metrics(likes=1000, retweets=500, replies=200, views=100000, bookmarks=50),
+        ),
         tweet_factory("low", metrics=Metrics(likes=0, retweets=0, replies=0, views=1, bookmarks=0)),
     ]
     output = filter_tweets(tweets, {"mode": "score", "minScore": 100.0})

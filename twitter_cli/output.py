@@ -62,7 +62,9 @@ def default_structured_format(*, as_json: bool, as_yaml: bool, as_toon: bool = F
     return None
 
 
-def use_rich_output(*, as_json: bool, as_yaml: bool, as_toon: bool = False, compact: bool = False) -> bool:
+def use_rich_output(
+    *, as_json: bool, as_yaml: bool, as_toon: bool = False, compact: bool = False
+) -> bool:
     """Return True when human-readable rich output should be used."""
     if compact:
         return False
@@ -71,7 +73,9 @@ def use_rich_output(*, as_json: bool, as_yaml: bool, as_toon: bool = False, comp
 
 def structured_output_options(command: Callable) -> Callable:
     """Add --json/--yaml/--toon options to a Click command."""
-    command = click.option("--toon", "as_toon", is_flag=True, help="Output as TOON (token-efficient).")(command)
+    command = click.option(
+        "--toon", "as_toon", is_flag=True, help="Output as TOON (token-efficient)."
+    )(command)
     command = click.option("--yaml", "as_yaml", is_flag=True, help="Output as YAML.")(command)
     command = click.option("--json", "as_json", is_flag=True, help="Output as JSON.")(command)
     return command
@@ -135,7 +139,7 @@ def _normalize_success_payload(data: Any) -> Any:
 
 def _encode_toon(obj: Any, indent: int = 0) -> str:
     """Encode a Python object to TOON (Token-Oriented Object Notation) format.
-    
+
     TOON is a compact, token-efficient format optimized for LLM consumption.
     Uses single-line notation where possible, minimal whitespace.
     """
@@ -165,12 +169,11 @@ def _encode_toon(obj: Any, indent: int = 0) -> str:
             return "{}"
         # Single-line for simple dicts with few keys
         if len(obj) <= 5 and all(not isinstance(v, (dict, list)) for v in obj.values()):
-            items = ", ".join(f'{k}: {_encode_toon(v)}' for k, v in obj.items())
+            items = ", ".join(f"{k}: {_encode_toon(v)}" for k, v in obj.items())
             return f"{{ {items} }}"
         # Multi-line for complex dicts
         items = "\n".join(
-            "  " * (indent + 1) + f'{k}: {_encode_toon(v, indent + 1)}'
-            for k, v in obj.items()
+            "  " * (indent + 1) + f"{k}: {_encode_toon(v, indent + 1)}" for k, v in obj.items()
         )
         return f"{{{items}\n{'  ' * indent}}}"
     # Fallback for other types
@@ -182,12 +185,19 @@ def emit_toon(data: Any) -> None:
     click.echo(_encode_toon(_normalize_success_payload(data)))
 
 
-def emit_empty_state(label: str, hint: str, *, as_json: bool = False, as_yaml: bool = False, as_toon: bool = False) -> bool:
+def emit_empty_state(
+    label: str, hint: str, *, as_json: bool = False, as_yaml: bool = False, as_toon: bool = False
+) -> bool:
     """Emit a structured empty-state message when results are empty.
-    
+
     Returns True when structured output was used, False for rich (human) output.
     """
-    payload = success_payload({"items": [], "empty": True, "message": f"No {label} found.", "hint": hint})
+    payload = success_payload({
+        "items": [],
+        "empty": True,
+        "message": f"No {label} found.",
+        "hint": hint,
+    })
     if as_toon:
         emit_toon(payload)
         return True
@@ -196,7 +206,9 @@ def emit_empty_state(label: str, hint: str, *, as_json: bool = False, as_yaml: b
         click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
         return True
     if fmt == "yaml":
-        click.echo(yaml.safe_dump(payload, allow_unicode=True, sort_keys=False, default_flow_style=False))
+        click.echo(
+            yaml.safe_dump(payload, allow_unicode=True, sort_keys=False, default_flow_style=False)
+        )
         return True
     if fmt == "toon":
         emit_toon(payload)
@@ -228,6 +240,7 @@ def emit_error(
     if fmt == "json":
         click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        click.echo(yaml.safe_dump(payload, allow_unicode=True, sort_keys=False, default_flow_style=False))
+        click.echo(
+            yaml.safe_dump(payload, allow_unicode=True, sort_keys=False, default_flow_style=False)
+        )
     return True
-

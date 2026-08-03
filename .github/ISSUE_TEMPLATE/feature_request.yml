@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: Current version
-      description: "Run `twitter --version` or `pip show twitter-cli | grep Version`"
+      description: "Run `twitter --version` or `pip show twitter-lyr | grep Version`"
       placeholder: "e.g. 0.6.0"
     validations:
       required: false

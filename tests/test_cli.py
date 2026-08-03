@@ -19,12 +19,12 @@ def test_cli_user_command_works_with_client_factory(monkeypatch) -> None:
         def fetch_user(self, screen_name: str) -> UserProfile:
             return UserProfile(id="1", name="Alice", screen_name=screen_name)
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
     result = runner.invoke(cli, ["user", "alice"])
     assert result.exit_code == 0
-
-
 
 
 def test_cli_feed_json_input_path(tmp_path, tweet_factory) -> None:
@@ -40,13 +40,7 @@ def test_cli_feed_json_input_path(tmp_path, tweet_factory) -> None:
 def test_cli_feed_input_accepts_structured_json_envelope(tmp_path, tweet_factory) -> None:
     json_path = tmp_path / "tweets.json"
     json_path.write_text(
-        (
-            "{\n"
-            '  "ok": true,\n'
-            '  "schema_version": "1",\n'
-            '  "data": %s\n'
-            "}\n"
-        )
+        ('{\n  "ok": true,\n  "schema_version": "1",\n  "data": %s\n}\n')
         % tweets_to_json([tweet_factory("1")]),
         encoding="utf-8",
     )
@@ -72,7 +66,9 @@ def test_cli_feed_passes_include_promoted(monkeypatch, tweet_factory) -> None:
             assert return_cursor is True
             return [tweet_factory("1", is_promoted=True)], "cursor-next"
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr(
         "twitter_cli.cli.load_config",
         lambda: {"fetch": {"count": 20}, "filter": {}, "rateLimit": {}},
@@ -103,7 +99,9 @@ def test_cli_feed_accepts_cursor_and_emits_pagination(monkeypatch) -> None:
             assert return_cursor is True
             return [], "cursor-next"
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr(
         "twitter_cli.cli.load_config",
         lambda: {"fetch": {"count": 20}, "filter": {}, "rateLimit": {}},
@@ -134,7 +132,9 @@ def test_cli_list_accepts_cursor_and_emits_pagination(monkeypatch, tweet_factory
             assert return_cursor is True
             return [tweet_factory("1")], "cursor-next"
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr(
         "twitter_cli.cli.load_config",
         lambda: {"fetch": {"count": 20}, "filter": {}, "rateLimit": {}},
@@ -198,6 +198,7 @@ def test_cli_commands_wrap_client_creation_errors(monkeypatch, args) -> None:
 
 def test_cli_user_error_yaml(monkeypatch) -> None:
     from twitter_cli.exceptions import NotFoundError
+
     monkeypatch.setenv("OUTPUT", "auto")
     monkeypatch.setattr(
         "twitter_cli.cli._get_client",
@@ -220,7 +221,9 @@ def test_cli_tweet_accepts_shared_url_with_query(monkeypatch) -> None:
             assert max_count == 50
             return []
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr(
         "twitter_cli.cli.load_config",
         lambda: {"fetch": {"count": 50}, "filter": {}, "rateLimit": {}},
@@ -246,7 +249,9 @@ def test_cli_article_accepts_article_url_and_json(monkeypatch) -> None:
                 article_text="Hello\n\n## Section",
             )
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr(
         "twitter_cli.cli.load_config",
         lambda: {"fetch": {"count": 50}, "filter": {}, "rateLimit": {}},
@@ -279,7 +284,9 @@ def test_cli_article_markdown_output_and_save(monkeypatch, tmp_path) -> None:
             assert tweet_id == "12345"
             return article
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr("twitter_cli.cli.load_config", dict)
     output_path = tmp_path / "article.md"
     runner = CliRunner()
@@ -311,7 +318,9 @@ def test_cli_article_markdown_overrides_auto_structured_output(monkeypatch) -> N
             return article
 
     monkeypatch.setenv("OUTPUT", "auto")
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr("twitter_cli.cli.load_config", dict)
     runner = CliRunner()
 
@@ -337,7 +346,9 @@ def test_cli_article_json_output_file_uses_structured_format(monkeypatch, tmp_pa
             assert tweet_id == "12345"
             return article
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr("twitter_cli.cli.load_config", dict)
     output_path = tmp_path / "article.json"
     runner = CliRunner()
@@ -372,7 +383,9 @@ def test_cli_bookmark_alias_works(monkeypatch) -> None:
             calls.append(tweet_id)
             return True
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["bookmark", "123"])
@@ -395,26 +408,35 @@ def test_cli_bookmarks_folders_inherits_parent_options(monkeypatch) -> None:
         compact: bool,
         full_text: bool,
     ) -> None:
-        calls.append(
-            (
-                folder_id,
-                max_count,
-                since,
-                as_json,
-                as_yaml,
-                output_file,
-                do_filter,
-                compact,
-                full_text,
-            )
-        )
+        calls.append((
+            folder_id,
+            max_count,
+            since,
+            as_json,
+            as_yaml,
+            output_file,
+            do_filter,
+            compact,
+            full_text,
+        ))
 
     monkeypatch.setattr("twitter_cli.cli._run_bookmark_folder_timeline", fake_folder_timeline)
     runner = CliRunner()
 
     result = runner.invoke(
         cli,
-        ["bookmarks", "--json", "--full-text", "-n", "7", "-o", "root.json", "--filter", "folders", "123"],
+        [
+            "bookmarks",
+            "--json",
+            "--full-text",
+            "-n",
+            "7",
+            "-o",
+            "root.json",
+            "--filter",
+            "folders",
+            "123",
+        ],
     )
 
     assert result.exit_code == 0
@@ -444,9 +466,14 @@ def test_cli_bookmarks_folders_list_inherits_parent_output_options(monkeypatch) 
 def test_cli_bookmarks_folders_list_writes_output_file(monkeypatch, tmp_path) -> None:
     class FakeClient:
         def fetch_bookmark_folders(self) -> list[BookmarkFolder]:
-            return [BookmarkFolder(id="f1", name="Reading"), BookmarkFolder(id="f2", name="Research")]
+            return [
+                BookmarkFolder(id="f1", name="Reading"),
+                BookmarkFolder(id="f2", name="Research"),
+            ]
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr("twitter_cli.cli.load_config", dict)
     output_path = tmp_path / "folders.json"
     runner = CliRunner()
@@ -475,7 +502,9 @@ def test_cli_whoami_command(monkeypatch) -> None:
         def fetch_me(self) -> UserProfile:
             return UserProfile(id="42", name="Test User", screen_name="testuser")
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["whoami"])
@@ -494,7 +523,9 @@ def test_cli_whoami_auto_yaml(monkeypatch) -> None:
             return UserProfile(id="42", name="Test User", screen_name="testuser")
 
     monkeypatch.setenv("OUTPUT", "auto")
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["whoami"])
@@ -512,7 +543,9 @@ def test_cli_status_auto_yaml(monkeypatch) -> None:
             return UserProfile(id="42", name="Test User", screen_name="testuser")
 
     monkeypatch.setenv("OUTPUT", "auto")
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["status"])
@@ -533,7 +566,9 @@ def test_cli_reply_command(monkeypatch) -> None:
             calls.append({"text": text, "reply_to_id": reply_to_id})
             return "999"
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["reply", "12345", "Nice tweet!"])
@@ -550,7 +585,9 @@ def test_cli_quote_command(monkeypatch) -> None:
             calls.append({"tweet_id": tweet_id, "text": text})
             return "888"
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["quote", "12345", "Interesting!"])
@@ -566,7 +603,9 @@ def test_cli_post_json_output(monkeypatch) -> None:
             assert reply_to_id is None
             return "999"
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["post", "hello", "--json"])
@@ -585,7 +624,9 @@ def test_cli_post_reply_to_accepts_status_url(monkeypatch) -> None:
             calls.append({"text": text, "reply_to_id": reply_to_id})
             return "999"
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(
@@ -603,7 +644,9 @@ def test_cli_like_yaml_output(monkeypatch) -> None:
             assert tweet_id == "123"
             return True
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["like", "123", "--yaml"])
@@ -624,7 +667,9 @@ def test_cli_follow_json_output(monkeypatch) -> None:
             assert user_id == "42"
             return True
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["follow", "alice", "--json"])
@@ -646,7 +691,9 @@ def test_cli_follow_command(monkeypatch) -> None:
             actions.append(("follow", user_id))
             return True
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["follow", "alice"])
@@ -665,7 +712,9 @@ def test_cli_unfollow_command(monkeypatch) -> None:
             actions.append(("unfollow", user_id))
             return True
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     runner = CliRunner()
 
     result = runner.invoke(cli, ["unfollow", "alice"])
@@ -682,29 +731,41 @@ def test_cli_search_advanced_options(monkeypatch) -> None:
             captured["product"] = product
             return []
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr(
         "twitter_cli.cli.load_config",
         lambda: {"fetch": {"count": 50}, "filter": {}, "rateLimit": {}},
     )
     runner = CliRunner()
 
-    result = runner.invoke(cli, [
-        "search", "python",
-        "--from", "elonmusk",
-        "--lang", "en",
-        "--since", "2026-01-01",
-        "--has", "links",
-        "--exclude", "retweets",
-        "--min-likes", "100",
-        "-t", "Latest",
-        "--json",
-    ])
+    result = runner.invoke(
+        cli,
+        [
+            "search",
+            "python",
+            "--from",
+            "elonmusk",
+            "--lang",
+            "en",
+            "--since",
+            "2026-01-01",
+            "--has",
+            "links",
+            "--exclude",
+            "retweets",
+            "--min-likes",
+            "100",
+            "-t",
+            "Latest",
+            "--json",
+        ],
+    )
 
     assert result.exit_code == 0, f"search failed: {result.output}"
     assert captured["query"] == (
-        "python from:elonmusk lang:en since:2026-01-01 "
-        "filter:links -filter:retweets min_faves:100"
+        "python from:elonmusk lang:en since:2026-01-01 filter:links -filter:retweets min_faves:100"
     )
     assert captured["product"] == "Latest"
 
@@ -717,7 +778,9 @@ def test_cli_search_operators_only_no_query(monkeypatch) -> None:
             captured["query"] = query
             return []
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr(
         "twitter_cli.cli.load_config",
         lambda: {"fetch": {"count": 50}, "filter": {}, "rateLimit": {}},
@@ -750,7 +813,9 @@ def test_cli_search_rejects_reversed_date_range(monkeypatch) -> None:
     monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: None)
     runner = CliRunner()
 
-    result = runner.invoke(cli, ["search", "python", "--since", "2026-03-02", "--until", "2026-03-01"])
+    result = runner.invoke(
+        cli, ["search", "python", "--since", "2026-03-02", "--until", "2026-03-01"]
+    )
     assert result.exit_code != 0
     assert "--since must be on or before --until" in result.output
 
@@ -793,7 +858,9 @@ def test_show_happy_path(monkeypatch, tmp_path, tweet_factory):
             assert tweet_id == "42"
             return [tw]
 
-    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli._get_client", lambda config=None, quiet=False: FakeClient()
+    )
     monkeypatch.setattr("twitter_cli.cli.load_config", dict)
 
     runner = CliRunner()

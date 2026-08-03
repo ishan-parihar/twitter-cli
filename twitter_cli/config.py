@@ -139,7 +139,9 @@ def _normalize_config(config: dict[str, Any]) -> dict[str, Any]:
     default_rl = DEFAULT_CONFIG["rateLimit"]
     rl["requestDelay"] = max(_as_float(rl.get("requestDelay"), default_rl["requestDelay"]), 0.0)
     rl["maxRetries"] = max(_as_int(rl.get("maxRetries"), default_rl["maxRetries"]), 0)
-    rl["retryBaseDelay"] = max(_as_float(rl.get("retryBaseDelay"), default_rl["retryBaseDelay"]), 1.0)
+    rl["retryBaseDelay"] = max(
+        _as_float(rl.get("retryBaseDelay"), default_rl["retryBaseDelay"]), 1.0
+    )
     rl["maxCount"] = max(_as_int(rl.get("maxCount"), default_rl["maxCount"]), 1)
     merged["rateLimit"] = rl
 
