@@ -1,13 +1,13 @@
-# AGENTS.md — Agent Developer Guide for twitter-cli
+# AGENTS.md — Agent Developer Guide for twitter-lyr
 
 This file provides context for AI agents working in this repository.
 
 ## Project Overview
 
-- **Project**: twitter-cli — A CLI for Twitter/X (read timelines, bookmarks, search, post, reply, etc.)
+- **Project**: twitter-lyr — A CLI for Twitter/X (read timelines, bookmarks, search, post, reply, etc.)
 - **Language**: Python 3.10+
 - **Package Manager**: uv (recommended) / pip
-- **Repository**: https://github.com/jackwener/twitter-cli
+- **Repository**: https://github.com/ishan-parihar/twitter-lyr
 
 ## Build, Lint, and Test Commands
 
@@ -68,3 +68,14 @@ twitter_cli/
 
 - GitHub Actions: Python 3.10, 3.11, 3.12
 - CI validates: ruff check + mypy + pytest
+
+## Release Process
+
+`publish.yml` publishes the package to PyPI via trusted publishing when a `v*` tag is pushed (CI must pass first).
+
+```bash
+uv version --bump patch          # update version in pyproject.toml AND uv.lock
+uv run ruff check . && uv run mypy twitter_cli && uv run pytest -q
+# commit, push, then tag:
+git tag v0.8.7 && git push origin v0.8.7
+```

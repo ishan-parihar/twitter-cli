@@ -425,6 +425,21 @@ Key design decisions:
 
 ---
 
+## Related CLI Tools
+
+This project is part of a family of agent-friendly CLI tools for social platforms:
+
+| Tool | CLI | Repo |
+|------|-----|------|
+| Instagram | `instagram-lyr` | [ishan-parihar/instagram-lyr](https://github.com/ishan-parihar/instagram-lyr) |
+| Reddit | `reddit-lyr` | [ishan-parihar/reddit-lyr](https://github.com/ishan-parihar/reddit-lyr) |
+| LinkedIn | `linkedin-lyr` | [ishan-parihar/linkedin-lyr](https://github.com/ishan-parihar/linkedin-lyr) |
+| Twitter/X | `twitter-lyr` | [ishan-parihar/twitter-lyr](https://github.com/ishan-parihar/twitter-lyr) |
+| Discord | `discord` | [ishan-parihar/discord-cli](https://github.com/ishan-parihar/discord-cli) |
+| Telegram | `tg` | [ishan-parihar/tg-cli](https://github.com/ishan-parihar/tg-cli) |
+
+---
+
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
