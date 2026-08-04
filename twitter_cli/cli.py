@@ -1940,25 +1940,25 @@ def auth(ctx):
 
 @auth.command(name="status")
 @structured_output_options
-def auth_status(as_json, as_yaml):
+def auth_status(as_json, as_yaml, as_toon):
     # type: (bool, bool, bool) -> None
     """Check authentication status and show current user."""
     config = load_config()
     try:
-        rich_output = use_rich_output(as_json=as_json, as_yaml=as_yaml)
+        rich_output = use_rich_output(as_json=as_json, as_yaml=as_yaml, as_toon=as_toon)
         client = _get_client(config, quiet=not rich_output)
         if rich_output:
             console.print("🔐 Checking authentication status...")
         profile = client.fetch_me()
     except (TwitterError, RuntimeError) as exc:
         if emit_structured(
-            error_payload(_error_code_from_exc(exc), str(exc)), as_json=as_json, as_yaml=as_yaml
+            error_payload(_error_code_from_exc(exc), str(exc)), as_json=as_json, as_yaml=as_yaml, as_toon=as_toon
         ):
             raise SystemExit(1) from None
         _exit_with_error(exc)
 
     payload = success_payload({"authenticated": True, "user": _agent_user_profile(profile)})
-    if emit_structured(payload, as_json=as_json, as_yaml=as_yaml):
+    if emit_structured(payload, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
         return
 
     console.print("[green]✅ Authenticated.[/green]")
@@ -1968,7 +1968,7 @@ def auth_status(as_json, as_yaml):
 @auth.command(name="clear")
 @click.confirmation_option(prompt="Are you sure you want to clear stored authentication?")
 @structured_output_options
-def auth_clear(as_json, as_yaml):
+def auth_clear(as_json, as_yaml, as_toon):
     # type: (bool, bool, bool) -> None
     """Clear stored authentication (cookies)."""
     # Clear environment variables if set
@@ -1983,7 +1983,7 @@ def auth_clear(as_json, as_yaml):
         cleared.append("TWITTER_CT0")
 
     payload = success_payload({"cleared": True, "variables": cleared})
-    if emit_structured(payload, as_json=as_json, as_yaml=as_yaml):
+    if emit_structured(payload, as_json=as_json, as_yaml=as_yaml, as_toon=as_toon):
         return
 
     if cleared:
