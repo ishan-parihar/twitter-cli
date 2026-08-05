@@ -2520,7 +2520,7 @@ def dm_conversations(ctx, max_count, as_json, as_yaml, as_toon):
         client = _get_client(config, quiet=not rich_output)
         if rich_output:
             console.print("💬 Fetching DM conversations...")
-        conversations = client.fetch_dm_conversations(max_count)
+        conversations = client.fetch_dm_conversations(max_count or 50)
     except (TwitterError, RuntimeError) as exc:
         _exit_with_error(exc)
 
