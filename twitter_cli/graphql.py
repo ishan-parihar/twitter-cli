@@ -82,6 +82,22 @@ FALLBACK_QUERY_IDS = {
     "LeaveCommunity": "AyhxKxP4QVwkQdMJqxRgxH",
 }
 
+# ── Unsupported operations ────────────────────────────────
+# Twitter replaced plaintext DM with the E2E-encrypted XChat protocol.
+# The legacy DM ops below have no real public GraphQL operation IDs (the
+# values left in FALLBACK_QUERY_IDS are fabricated placeholders, not
+# resolvable ops), so issuing them yields a raw 404. Surface an honest
+# error instead of a fabricated-ID request that cannot succeed.
+UNSUPPORTED_FABRICATED_OPS = frozenset({
+    "CreateDMConversation",
+    "SendDM",
+    "GetDMConversations",
+    "GetDMMessages",
+    "MarkDMConversationRead",
+    "SendDMTypingIndicator",
+    "RotateDMEncryptionKeys",
+})
+
 # ── Default feature flags ────────────────────────────────────────────────
 _DEFAULT_FEATURES = {
     "responsive_web_graphql_exclude_directive_enabled": True,
@@ -237,6 +253,15 @@ def _resolve_query_id(operation_name, prefer_fallback=True, url_fetch_fn=None):
     cached = _cached_query_ids.get(operation_name)
     if cached:
         return cached
+
+    if operation_name in UNSUPPORTED_FABRICATED_OPS:
+        raise QueryIdError(
+            'DM operation "%s" is disabled: Twitter replaced plaintext DM '
+            "with the E2E-encrypted XChat protocol, and these legacy DM ops "
+            "no longer exist at the API layer (their IDs are unresolvable). "
+            "Real DM requires the XChat enrollment+crypto handshake."
+            % operation_name
+        )
 
     fallback = FALLBACK_QUERY_IDS.get(operation_name)
     if prefer_fallback and fallback:
