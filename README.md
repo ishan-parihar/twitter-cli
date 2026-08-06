@@ -76,7 +76,7 @@ twitter feed --filter
 - **Follow / Unfollow**: manage follows
 - **Block / Unblock**: block and unblock users
 - **Mute / Unmute**: mute and unmute users
-- **DM**: create conversations, send messages, list conversations/messages, mark read, typing indicator, rotate encryption keys
+- **DM**: create conversations, send messages, list conversations/messages, mark read, typing indicator, rotate encryption keys — **currently disabled** (Twitter replaced DM with E2E-encrypted XChat; see [Limitations](#limitations))
 - **Polls**: create polls (2-4 options, 5 min–7 days), vote on polls
 - **Lists**: create/update/delete lists, add/remove members, list members, list subscriptions
 - **Communities**: join/leave communities, fetch community tweets
@@ -213,6 +213,9 @@ twitter unmute elonmusk
 ```
 
 ### DM (Direct Messages)
+
+> ⚠️ **DM is unavailable** — Twitter replaced plaintext DMs with the E2E-encrypted XChat protocol; the legacy DM GraphQL ops no longer exist. These commands return a clear `query_id_error` (see [Limitations](#limitations)).
+
 ```bash
 # List conversations
 twitter dm conversations
@@ -343,6 +346,25 @@ twitter session-install --shell bash
 
 # After install, new shell sessions get live timeline context automatically
 ```
+
+---
+
+## Limitations
+
+Twitter rotates its GraphQL operation IDs and silently removes retired API surfaces. Where a surface is gone, **twitter-lyr returns a structured error instead of faking success**:
+
+| Capability | Status |
+|---|---|
+| Post / reply / quote / delete | 🟢 working (verified live) |
+| Like, retweet, bookmark, follow, block, mute, lists, communities | 🟢 working |
+| Polls create/vote | 🟢 working |
+| **Direct Messages (conversations, send, read, typing, rotate-keys)** | 🔴 **DM is E2E-encrypted (XChat); the legacy DM GraphQL ops no longer exist at the API layer.** The tool surfaces a clear `query_id_error` explaining DM is unavailable rather than emitting fabricated op IDs. Implementing real DM requires the full XChat enrollment+crypto protocol — **not something the CLI can paper over.** |
+| Feed / search / user / tweet detail / bookmarks / notifications / articles / lists / communities reads | 🟢 working |
+
+Notes:
+
+- The browser (obscura/CDP) surface for X.com renders Twitter's anti-bot "JavaScript is not available" wall, so browser-DOM automation does **not** work for Twitter — everything goes through the GraphQL API.
+- The 18 test failures flagged by `pytest` are live-network smoke tests (they contact X.com), not code defects; they reproduce on an unchanged baseline.
 
 ---
 
